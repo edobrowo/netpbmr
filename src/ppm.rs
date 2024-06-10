@@ -3,7 +3,7 @@ use crate::NetpbmError;
 use std::error::Error;
 use std::io::{BufWriter, Write};
 
-struct PpmImage {
+pub struct PpmImage {
     data: Vec<[u8; 3]>,
     width: ImageDim,
     height: ImageDim,
@@ -11,7 +11,7 @@ struct PpmImage {
 }
 
 impl PpmImage {
-    const MAGIC_NUMBER: &'static [u8; 2] = b"P6";
+    const MAGIC_NUMBER: &'static str = "P6";
 
     pub fn new(
         data: Vec<[u8; 3]>,
@@ -57,7 +57,33 @@ impl<W: Write> PpmWriter<W> {
         PpmWriter { stream }
     }
 
-    pub fn write(
+    pub fn write_all(&mut self, image: &PpmImage) -> Result<usize, Box<dyn Error>> {
+        let mut bytes = Vec::new();
+
+        let header = format!(
+            "{}\n{} {} {}\n",
+            PpmImage::MAGIC_NUMBER,
+            image.width,
+            image.height,
+            image.bitdepth
+        );
+        bytes.extend_from_slice(header.as_bytes());
+
+        self.stream.write_all(&bytes)?;
+
+        bytes.clear();
+        for color in &image.data {
+            // TODO: If bit depth is less than 256, 1 byte is used per channel. Otherwise 2 bytes is used, MSB first.
+            bytes.extend_from_slice(color);
+        }
+        self.stream.write_all(&bytes)?;
+
+        self.stream.flush()?;
+
+        Ok(0)
+    }
+
+    pub fn make_and_write_all(
         &mut self,
         data: Vec<[u8; 3]>,
         width: u32,
@@ -65,25 +91,7 @@ impl<W: Write> PpmWriter<W> {
         bitdepth: u32,
     ) -> Result<usize, Box<dyn Error>> {
         let image = PpmImage::new(data, width, height, bitdepth)?;
-
-        self.stream.write_all(PpmImage::MAGIC_NUMBER)?;
-        self.stream.write_all(b"\n")?;
-        self.stream.write_all(image.width.to_string().as_bytes())?;
-        self.stream.write_all(b" ")?;
-        self.stream.write_all(image.height.to_string().as_bytes())?;
-        self.stream.write_all(b" ")?;
-        self.stream
-            .write_all(image.bitdepth.to_string().as_bytes())?;
-        self.stream.write_all(b"\n")?;
-
-        for color in image.data {
-            // TODO: If bit depth is less than 256, 1 byte is used per channel. Otherwise 2 bytes is used, MSB first.
-            self.stream.write_all(&color[..])?;
-        }
-
-        self.stream.flush()?;
-
-        Ok(0)
+        self.write_all(&image)
     }
 }
 
@@ -129,13 +137,15 @@ mod tests {
         let buffer = ImageBuffer::new();
         let mut stream = PpmWriter::new(buffer);
 
-        assert!(!stream.write(data.clone(), 3, 0, 255).is_ok());
-        assert!(!stream.write(data.clone(), 0, 2, 255).is_ok());
-        assert!(!stream.write(data.clone(), 3, 3, 255).is_ok());
-        assert!(!stream.write(data.clone(), 2, 2, 255).is_ok());
-        assert!(!stream.write(data.clone(), 3, 2, 0).is_ok());
-        assert!(!stream.write(data.clone(), 3, 2, 65536).is_ok());
-        assert!(!stream.write(data, u32::MAX, u32::MAX, 255).is_ok());
+        assert!(!stream.make_and_write_all(data.clone(), 3, 0, 255).is_ok());
+        assert!(!stream.make_and_write_all(data.clone(), 0, 2, 255).is_ok());
+        assert!(!stream.make_and_write_all(data.clone(), 3, 3, 255).is_ok());
+        assert!(!stream.make_and_write_all(data.clone(), 2, 2, 255).is_ok());
+        assert!(!stream.make_and_write_all(data.clone(), 3, 2, 0).is_ok());
+        assert!(!stream.make_and_write_all(data.clone(), 3, 2, 65536).is_ok());
+        assert!(!stream
+            .make_and_write_all(data, u32::MAX, u32::MAX, 255)
+            .is_ok());
     }
 
     #[test]
@@ -155,7 +165,7 @@ mod tests {
             0, 255, 255, 255, 0, 0, 0,
         ];
 
-        assert!(ppmwriter.write(data, 3, 2, 255).is_ok());
+        assert!(ppmwriter.make_and_write_all(data, 3, 2, 255).is_ok());
 
         let inner = ppmwriter.stream.into_inner().unwrap().buffer;
         assert_eq!(inner[..], expected[..]);

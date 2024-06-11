@@ -3,25 +3,32 @@ use std::error::Error;
 use std::fmt;
 
 pub mod fields;
+pub mod pbm;
+pub mod pgm;
+pub mod pnm;
 pub mod ppm;
 
-#[derive(Debug, Clone)]
+/// A netpbm file format must supply its associated magic number.
+pub trait NetpbmFileFormat {
+    fn magic_number(&self) -> MagicNumber;
+}
+
+/// General netpbm-related error enum.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum NetpbmError {
-    InvalidBitDepth {
-        value: u32,
-    },
-    InvalidImageDim {
-        value: u32,
-    },
+    /// The provided bit depth value is out of the acceptable range.
+    InvalidBitDepth { value: u32 },
+    /// The provided image dim value is out of the acceptable range.
+    InvalidImageDim { value: u32 },
+    /// The initialization color value array has a size unequal to
+    /// the provide width times provided height.
     MalformedInitArray {
         length: u32,
         width: ImageDim,
         height: ImageDim,
     },
-    OversizedChannel {
-        channel: u8,
-        bitdepth: BitDepth,
-    },
+    /// The color channel value is larger than the provided bit depth.
+    OversizedChannel { channel: u16, bit_depth: BitDepth },
 }
 
 impl Error for NetpbmError {
@@ -38,8 +45,8 @@ impl fmt::Display for NetpbmError {
                 f,
                 "Invalid bit depth: {} (should be in range [{}, {}]",
                 value,
-                BitDepth::BITDEPTH_MIN,
-                BitDepth::BITDEPTH_MAX
+                BitDepth::BIT_DEPTH_MIN,
+                BitDepth::BIT_DEPTH_MAX
             ),
             InvalidImageDim { ref value } => write!(
                 f,
@@ -55,10 +62,7 @@ impl fmt::Display for NetpbmError {
                 "Color array size {} does not match expected image size {} * {}",
                 length, width, height
             ),
-            OversizedChannel {
-                channel,
-                bitdepth: bit_depth,
-            } => {
+            OversizedChannel { channel, bit_depth } => {
                 write!(
                     f,
                     "Color {} is larger than bit depth {}",

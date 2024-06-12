@@ -7,7 +7,7 @@ use crate::{fields::*, NetpbmError, NetpbmFileFormat};
 /// grey values. There are `height` number of rows, each with
 /// `width` grey values.
 ///
-/// Each PGM image also has associated with it a magic number.
+/// Each PGM image also has associated with it a magic number,
 /// which is either the bytes `P2` or `P5`. The magic number indicates
 /// the PGM file format (see PgmFile for details). The file format
 /// indicates how the PGM file is serialized.
@@ -46,48 +46,15 @@ impl PgmImage {
 
         let bit_depth = BitDepth::new(bit_depth)?;
 
-        // All grey values in the image must be less than the given bit depth.
+        // All grey values must be less than the given bit depth.
         for &grey in grey_values.iter() {
             if grey as u32 > bit_depth.value() {
-                return Err(NetpbmError::OversizedChannel {
-                    channel: grey,
+                return Err(NetpbmError::OversizedSample {
+                    sample: grey,
                     bit_depth,
                 });
             }
         }
-
-        Ok(PgmImage {
-            grey_values,
-            width,
-            height,
-            bit_depth,
-        })
-    }
-
-    /// Create a new PGM image from the grey values, image width,
-    /// and image height. The bit depth is inferred from the maximum
-    /// grey value.
-    pub fn with_inferred_bd(
-        grey_values: Vec<u16>,
-        width: u32,
-        height: u32,
-    ) -> Result<PgmImage, NetpbmError> {
-        let width = ImageDim::new(width)?;
-        let height = ImageDim::new(height)?;
-
-        // The length of the color channel buffer should be
-        // equal to the image width times the image height.
-        if grey_values.len() as u32 != width.value() * height.value() {
-            return Err(NetpbmError::MalformedInitArray {
-                length: grey_values.len() as u32,
-                width,
-                height,
-            });
-        }
-
-        // The bit depth is the maximum grey value.
-        let bit_depth = *grey_values.iter().max().unwrap() as u32;
-        let bit_depth = BitDepth::new(bit_depth)?;
 
         Ok(PgmImage {
             grey_values,

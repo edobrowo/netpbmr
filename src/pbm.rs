@@ -6,7 +6,7 @@ use crate::{fields::*, NetpbmError, NetpbmFileFormat};
 /// the image height, and a sequence of bits.
 /// There are `height` number of rows, each with `width` bits.
 ///
-/// Each PBM image also has associated with it a magic number.
+/// Each PBM image also has associated with it a magic number,
 /// which is either the bytes `P1` or `P4`. The magic number indicates
 /// the PBM file format (see PbmFile for details). The file format
 /// indicates how the PBM file is serialized.
@@ -18,15 +18,17 @@ pub struct PbmImage {
 }
 
 impl PbmImage {
-    /// Create a new PBM image from the bits, image width, and image height.
+    /// Create a new PBM image from bits, image width, and image height.
     /// Assumes bits are byte-packed.
     pub fn from_bits(bits: Vec<u8>, width: u32, height: u32) -> Result<PbmImage, NetpbmError> {
         let width = ImageDim::new(width)?;
         let height = ImageDim::new(height)?;
 
         // The length of the bit buffer should be equal to
-        // the image width, times the image height, times 8.
-        if bits.len() as u32 != width.value() * height.value() * 8 {
+        // the image width times the image height divided by 8,
+        // accounting for padding.
+        let expected_size = (width.value() + 7) / 8 * height.value();
+        if bits.len() as u32 != expected_size {
             return Err(NetpbmError::MalformedInitArray {
                 length: bits.len() as u32,
                 width,

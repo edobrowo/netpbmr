@@ -3,32 +3,40 @@ use std::error::Error;
 use std::fmt;
 
 pub mod fields;
+pub mod pam;
 pub mod pbm;
 pub mod pgm;
 pub mod pnm;
 pub mod ppm;
 
-/// A netpbm file format must supply its associated magic number.
+/// A netpbm file format must supply a magic number.
 pub trait NetpbmFileFormat {
     fn magic_number(&self) -> MagicNumber;
 }
 
-/// General netpbm-related error enum.
+/// netpbm errors.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum NetpbmError {
-    /// The provided bit depth value is out of the acceptable range.
+    /// The bit depth is out of the acceptable range.
     InvalidBitDepth { value: u32 },
-    /// The provided image dim value is out of the acceptable range.
+    /// The image dim value is out of the acceptable range.
     InvalidImageDim { value: u32 },
-    /// The initialization color value array has a size unequal to
-    /// the provide width times provided height.
+    /// The channel depth is out of the acceptable range.
+    InvalidChannelDepth { value: u32 },
+    /// The size of the sample array is not equal to the
+    /// product of the given width and height.
     MalformedInitArray {
         length: u32,
         width: ImageDim,
         height: ImageDim,
     },
-    /// The color channel value is larger than the provided bit depth.
-    OversizedChannel { channel: u16, bit_depth: BitDepth },
+    /// A sample value is greater than the provided bit depth.
+    OversizedSample { sample: u16, bit_depth: BitDepth },
+    /// The length of a tuple is greater than the provided channel depth.
+    OversizedTuple {
+        length: u32,
+        channel_depth: ChannelDepth,
+    },
 }
 
 impl Error for NetpbmError {
@@ -43,30 +51,47 @@ impl fmt::Display for NetpbmError {
         match *self {
             InvalidBitDepth { ref value } => write!(
                 f,
-                "Invalid bit depth: {} (should be in range [{}, {}]",
+                "Bit depth {} should be in range [{}, {}]",
                 value,
-                BitDepth::BIT_DEPTH_MIN,
-                BitDepth::BIT_DEPTH_MAX
+                BitDepth::MIN,
+                BitDepth::MAX
             ),
-            InvalidImageDim { ref value } => write!(
-                f,
-                "Invalid image dimension: {} (should be greater than 0)",
-                value
-            ),
+            InvalidImageDim { ref value } => {
+                write!(f, "Image dimension {} should be greater than 0", value)
+            }
+            InvalidChannelDepth { ref value } => {
+                write!(f, "Channel depth {} should be greater than 0", value)
+            }
             MalformedInitArray {
+                ref length,
+                ref width,
+                ref height,
+            } => write!(
+                f,
+                "Sample array size {} does not match expected image size {} * {} = {}",
                 length,
                 width,
                 height,
-            } => write!(
-                f,
-                "Color array size {} does not match expected image size {} * {}",
-                length, width, height
+                width.value() * height.value()
             ),
-            OversizedChannel { channel, bit_depth } => {
+            OversizedSample {
+                sample: ref channel,
+                ref bit_depth,
+            } => {
                 write!(
                     f,
-                    "Color {} is larger than bit depth {}",
+                    "Sample value {} is larger than the expected bit depth {}",
                     channel, bit_depth
+                )
+            }
+            OversizedTuple {
+                ref length,
+                ref channel_depth,
+            } => {
+                write!(
+                    f,
+                    "Tuple size {} is larger than the expected channel depth {}",
+                    length, channel_depth
                 )
             }
         }

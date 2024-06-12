@@ -74,49 +74,13 @@ impl PpmImage {
     }
 }
 
-/// PPM (Portable Pixel Map) file.
-///
-/// PPM files can be one of two formats:
+/// PPM `raw` file format.
 ///
 /// `raw` PPM files consist of a sequence of PPM images.
 /// Color channel values are serialized as unsigned
 /// binary integers.
 /// The `raw` format uses the magic number `P6`.
 ///
-/// `plain` PPM files consist of a single PPM image.
-/// Color channel values are written as ASCII-encoded
-/// decimal numbers.
-/// The `plain` format uses the magic number `P3`.
-///
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct PpmFile {
-    format: PpmFormat,
-}
-
-impl PpmFile {
-    /// Create a new PPM `raw` file.
-    pub fn new_raw() -> Self {
-        PpmFile {
-            format: PpmFormat::Raw(PpmRaw::new()),
-        }
-    }
-
-    /// Create a new PPM `plain` file.
-    pub fn new_plain(image: PpmImage) -> Self {
-        PpmFile {
-            format: PpmFormat::Plain(PpmPlain::new(image)),
-        }
-    }
-}
-
-/// Specifies the PPM format.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-enum PpmFormat {
-    Raw(PpmRaw),
-    Plain(PpmPlain),
-}
-
-/// PPM `raw` file format.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PpmRaw {
     images: Vec<PpmImage>,
@@ -159,6 +123,12 @@ impl Default for PpmRaw {
 }
 
 /// PPM `plain` file format.
+///
+/// `plain` PPM files consist of a single PPM image.
+/// Color channel values are written as ASCII-encoded
+/// decimal numbers.
+/// The `plain` format uses the magic number `P3`.
+///
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PpmPlain {
     image: PpmImage,

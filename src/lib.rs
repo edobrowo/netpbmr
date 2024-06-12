@@ -9,8 +9,8 @@ pub mod pgm;
 pub mod pnm;
 pub mod ppm;
 
-/// A netpbm file format must supply a magic number.
 pub trait NetpbmFileFormat {
+    /// Get the netpbm magic number associated to this format.
     fn magic_number(&self) -> MagicNumber;
 }
 

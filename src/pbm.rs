@@ -57,47 +57,12 @@ impl PbmImage {
     }
 }
 
-/// PBM (Portable Bit Map) file.
-///
-/// PBM files can be one of two formats:
+/// PBM `raw` file format.
 ///
 /// `raw` PBM files consist of a sequence of PBM images.
 /// Bits are serialized directly.
 /// The `raw` format uses the magic number `P4`.
 ///
-/// `plain` PBM files consist of a single PBM image.
-/// Bits are written as ASCII-encoded `0` or `1`.
-/// The `plain` format uses the magic number `P1`.
-///
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct PbmFile {
-    format: PbmFormat,
-}
-
-impl PbmFile {
-    /// Create a new PBM `raw` file.
-    pub fn new_raw() -> Self {
-        PbmFile {
-            format: PbmFormat::Raw(PbmRaw::new()),
-        }
-    }
-
-    /// Create a new PBM `plain` file.
-    pub fn new_plain(image: PbmImage) -> Self {
-        PbmFile {
-            format: PbmFormat::Plain(PbmPlain::new(image)),
-        }
-    }
-}
-
-/// Specifies the PBM format.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-enum PbmFormat {
-    Raw(PbmRaw),
-    Plain(PbmPlain),
-}
-
-/// PBM `raw` file format.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PbmRaw {
     images: Vec<PbmImage>,
@@ -140,6 +105,11 @@ impl Default for PbmRaw {
 }
 
 /// PBM `plain` file format.
+///
+/// `plain` PBM files consist of a single PBM image.
+/// Bits are written as ASCII-encoded `0` or `1`.
+/// The `plain` format uses the magic number `P1`.
+///
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PbmPlain {
     image: PbmImage,

@@ -75,47 +75,12 @@ impl PgmImage {
     }
 }
 
-/// PGM (Portable Grey Map) file.
-///
-/// PGM files can be one of two formats:
+/// PGM `raw` file format.
 ///
 /// `raw` PGM files consist of a sequence of PGM images.
 /// Grey values are serialized as unsigned binary integers.
 /// The `raw` format uses the magic number `P5`.
 ///
-/// `plain` PGM files consist of a single PGM image.
-/// Grey values are written as ASCII-encoded decimal numbers.
-/// The `plain` format uses the magic number `P2`.
-///
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct PgmFile {
-    format: PgmFormat,
-}
-
-impl PgmFile {
-    /// Create a new PGM `raw` file.
-    pub fn new_raw() -> Self {
-        PgmFile {
-            format: PgmFormat::Raw(PgmRaw::new()),
-        }
-    }
-
-    /// Create a new PGM `plain` file.
-    pub fn new_plain(image: PgmImage) -> Self {
-        PgmFile {
-            format: PgmFormat::Plain(PgmPlain::new(image)),
-        }
-    }
-}
-
-/// Specifies the PGM format.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-enum PgmFormat {
-    Raw(PgmRaw),
-    Plain(PgmPlain),
-}
-
-/// PGM `raw` file format.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PgmRaw {
     images: Vec<PgmImage>,
@@ -158,6 +123,11 @@ impl Default for PgmRaw {
 }
 
 /// PGM `plain` file format.
+///
+/// `plain` PGM files consist of a single PGM image.
+/// Grey values are written as ASCII-encoded decimal numbers.
+/// The `plain` format uses the magic number `P2`.
+///
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PgmPlain {
     image: PgmImage,

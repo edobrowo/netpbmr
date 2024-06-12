@@ -100,7 +100,7 @@ impl PamImage {
     }
 }
 
-/// PAM (Portable Arbitrary Map) file.
+/// PAM file format.
 ///
 /// PAM files consist of a sequence of PAM images.
 ///
@@ -109,14 +109,14 @@ impl PamImage {
 /// PBM, PGM, and PPM.
 ///
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct PamFile {
+pub struct PamRaw {
     images: Vec<PamImage>,
 }
 
-impl PamFile {
+impl PamRaw {
     /// Make an empty PAM file.
     pub fn new() -> Self {
-        PamFile { images: Vec::new() }
+        PamRaw { images: Vec::new() }
     }
 
     /// Add a new image to the image list.
@@ -130,20 +130,20 @@ impl PamFile {
     }
 }
 
-impl NetpbmFileFormat for PamFile {
+impl NetpbmFileFormat for PamRaw {
     fn magic_number(&self) -> MagicNumber {
         MagicNumber::P7
     }
 }
 
-impl From<Vec<PamImage>> for PamFile {
+impl From<Vec<PamImage>> for PamRaw {
     /// Make a PAM file given a list of PAM images.
     fn from(images: Vec<PamImage>) -> Self {
-        PamFile { images }
+        PamRaw { images }
     }
 }
 
-impl Default for PamFile {
+impl Default for PamRaw {
     fn default() -> Self {
         Self::new()
     }

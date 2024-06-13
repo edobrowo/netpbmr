@@ -130,12 +130,6 @@ impl PamRaw {
     }
 }
 
-impl NetpbmFileFormat for PamRaw {
-    fn magic_number(&self) -> MagicNumber {
-        MagicNumber::P7
-    }
-}
-
 impl From<Vec<PamImage>> for PamRaw {
     /// Make a PAM file given a list of PAM images.
     fn from(images: Vec<PamImage>) -> Self {

@@ -1,6 +1,7 @@
 use fields::*;
 use std::error::Error;
 use std::fmt;
+use std::io;
 
 pub mod fields;
 pub mod pam;
@@ -10,8 +11,11 @@ pub mod pnm;
 pub mod ppm;
 
 pub trait NetpbmFileFormat {
-    /// Get the netpbm magic number associated to this format.
-    fn magic_number(&self) -> MagicNumber;
+    /// Write the netpbm file into a writer.
+    fn write_to<W: io::Write>(&self, writer: &mut W) -> io::Result<usize>;
+
+    /// Parse a netpbm file from a reader.
+    fn parse<R: io::Read>(reader: &mut R) -> Self;
 }
 
 /// netpbm errors.

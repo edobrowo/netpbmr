@@ -1,3 +1,4 @@
+use crate::io::{self, Write};
 use crate::{fields::*, NetpbmError, NetpbmFileFormat};
 
 /// PPM (Portable Pixel Map) image.
@@ -87,6 +88,8 @@ pub struct PpmRaw {
 }
 
 impl PpmRaw {
+    const MAGIC_NUMBER: MagicNumber = MagicNumber::P6;
+
     /// Make an empty PPM `raw` file.
     pub fn new() -> Self {
         PpmRaw { images: Vec::new() }
@@ -104,8 +107,52 @@ impl PpmRaw {
 }
 
 impl NetpbmFileFormat for PpmRaw {
-    fn magic_number(&self) -> MagicNumber {
-        MagicNumber::P6
+    fn write_to<W: io::Write>(&self, writer: &mut W) -> io::Result<usize> {
+        let mut stream = io::BufWriter::new(writer);
+        let mut bytes_written = 0;
+
+        for image in &self.images {
+            let header = format!(
+                "{}\n{} {} {}\n",
+                Self::MAGIC_NUMBER,
+                image.width,
+                image.height,
+                image.bit_depth
+            );
+            stream.write_all(header.as_bytes())?;
+            bytes_written += header.len();
+
+            if image.bit_depth.value() < 256 {
+                for color in &image.colors {
+                    let color = [color[0] as u8, color[1] as u8, color[2] as u8];
+                    stream.write_all(&color)?;
+                }
+                bytes_written += image.colors.len() * 3;
+            } else {
+                for color in &image.colors {
+                    let color = [
+                        (color[0] >> 8) as u8,
+                        (color[0] & 0xFF) as u8,
+                        (color[1] >> 8) as u8,
+                        (color[1] & 0xFF) as u8,
+                        (color[2] >> 8) as u8,
+                        (color[2] & 0xFF) as u8,
+                    ];
+                    stream.write_all(&color)?;
+                }
+                bytes_written += image.colors.len() * 6;
+            }
+
+            stream.flush()?;
+        }
+
+        Ok(bytes_written)
+    }
+
+    fn parse<R: io::Read>(reader: &mut R) -> Self {
+        let mut stream = io::BufReader::new(reader);
+
+        Self { images: Vec::new() }
     }
 }
 
@@ -135,6 +182,8 @@ pub struct PpmPlain {
 }
 
 impl PpmPlain {
+    const MAGIC_NUMBER: MagicNumber = MagicNumber::P3;
+
     /// Make an empty PPM `plain` file.
     pub fn new(image: PpmImage) -> Self {
         PpmPlain { image }
@@ -143,12 +192,6 @@ impl PpmPlain {
     /// Get a ref to the contained PPM image.
     fn image_ref(&self) -> &PpmImage {
         &self.image
-    }
-}
-
-impl NetpbmFileFormat for PpmPlain {
-    fn magic_number(&self) -> MagicNumber {
-        MagicNumber::P3
     }
 }
 

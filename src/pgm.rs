@@ -103,12 +103,6 @@ impl PgmRaw {
     }
 }
 
-impl NetpbmFileFormat for PgmRaw {
-    fn magic_number(&self) -> MagicNumber {
-        MagicNumber::P5
-    }
-}
-
 impl From<Vec<PgmImage>> for PgmRaw {
     /// Make a PGM `raw` file given a list of PGM images.
     fn from(images: Vec<PgmImage>) -> Self {
@@ -142,12 +136,6 @@ impl PgmPlain {
     /// Get a ref to the contained PGM image.
     fn image_ref(&self) -> &PgmImage {
         &self.image
-    }
-}
-
-impl NetpbmFileFormat for PgmPlain {
-    fn magic_number(&self) -> MagicNumber {
-        MagicNumber::P2
     }
 }
 

@@ -85,12 +85,6 @@ impl PbmRaw {
     }
 }
 
-impl NetpbmFileFormat for PbmRaw {
-    fn magic_number(&self) -> MagicNumber {
-        MagicNumber::P4
-    }
-}
-
 impl From<Vec<PbmImage>> for PbmRaw {
     /// Make a PBM `raw` file given a list of PBM images.
     fn from(images: Vec<PbmImage>) -> Self {
@@ -124,12 +118,6 @@ impl PbmPlain {
     /// Get a ref to the contained PBM image.
     fn image_ref(&self) -> &PbmImage {
         &self.image
-    }
-}
-
-impl NetpbmFileFormat for PbmPlain {
-    fn magic_number(&self) -> MagicNumber {
-        MagicNumber::P1
     }
 }
 

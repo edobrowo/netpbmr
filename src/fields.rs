@@ -40,6 +40,12 @@ impl MagicNumber {
     }
 }
 
+impl fmt::Display for MagicNumber {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.value())
+    }
+}
+
 /// Bit depth field.
 ///
 /// netpbm specifies that formats must specify the

@@ -1,4 +1,4 @@
-use crate::fields::MagicNumber;
+use crate::header::MagicNumber;
 
 /// netpbm supports 4 types of images: PBM, PGM, PPM, and PAM.
 /// PBM, PGM, and PPM are further divided into their `raw` and

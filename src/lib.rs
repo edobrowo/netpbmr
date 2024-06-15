@@ -1,11 +1,15 @@
-use header::*;
+use formats::*;
 use std::error::Error;
 use std::fmt;
-use std::io;
 
 pub mod formats;
-pub mod header;
+pub mod pam;
+pub mod pbm;
+pub mod pgm;
 pub mod ppm;
+pub mod samples;
+
+use samples::{SampleBuffer, SampleType};
 
 /// netpbm errors.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -89,112 +93,56 @@ impl fmt::Display for NetpbmError {
     }
 }
 
-/// Indicates how to encode a PNM file.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub enum EncodingType {
-    /// Sample data is serialized as bytes.
-    Raw,
-
-    /// Sample data is written as ASCII integers separated
-    /// by whitespace.
-    Plain,
-}
-
-/// Generalizes over u8 and u16 since netpbm permits
-/// samples to be either 8- or 16-bit.
-pub trait SampleType {
-    /// The sample type, either u8 or u16.
-    type Sample;
-
-    /// Validate that the samples agree with the header info.
-    fn validate_samples(info: &Info, samples: &[Self::Sample]) -> Result<(), NetpbmError>;
-
-    /// Convert the Sample slice into a SampleBuffer.
-    fn to_sample_buffer(samples: &[Self::Sample]) -> SampleBuffer;
-}
-
-impl SampleType for u8 {
-    type Sample = u8;
-
-    fn validate_samples(info: &Info, samples: &[Self::Sample]) -> Result<(), NetpbmError> {
-        info.validate_u8_samples(samples)
-    }
-
-    fn to_sample_buffer(samples: &[Self::Sample]) -> SampleBuffer {
-        SampleBuffer::EIGHT(samples)
-    }
-}
-
-impl SampleType for u16 {
-    type Sample = u16;
-
-    fn validate_samples(info: &Info, samples: &[Self::Sample]) -> Result<(), NetpbmError> {
-        info.validate_u16_samples(samples)
-    }
-
-    fn to_sample_buffer(samples: &[Self::Sample]) -> SampleBuffer {
-        SampleBuffer::SIXTEEN(samples)
-    }
-}
-
-/// Convenience sample buffer.
+/// Lightweight image wrapper that maintains a ref to a buffer
+/// of samples. On creation, the provided header values are
+/// bounds-checked and samples are validated against the
+/// bit-depth and image dimensions.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub enum SampleBuffer<'a> {
-    EIGHT(&'a [u8]),
-    SIXTEEN(&'a [u16]),
+pub struct Image<'a> {
+    info: Info,
+    samples: SampleBuffer<'a>,
 }
 
-#[derive(Debug)]
-pub struct Writer<W: io::Write> {
-    writer: W,
-    image_info: Vec<Info>,
-}
-
-impl<W: io::Write> Writer<W> {
-    /// Make a new netpbm writer.
-    pub fn new(writer: W) -> Result<Self, NetpbmError> {
-        Ok(Self {
-            writer,
-            image_info: Vec::new(),
-        })
+impl<'a> Image<'a> {
+    /// Create a new image.
+    pub fn new<T: SampleType>(samples: &'a [T::Sample], info: Info) -> Result<Self, NetpbmError> {
+        T::validate_samples(&info, samples)?;
+        let samples = T::to_sample_buffer(samples);
+        Ok(Self { samples, info })
     }
 
-    /// Retrieve a ref to the image info.
-    pub fn info(&self) -> &Vec<Info> {
-        &self.image_info
+    // Get the netpbm format.
+    pub fn format(&self) -> NetpbmFormat {
+        self.info.format.clone()
     }
 
-    // TODO : to support comments, another, more granular constructor
-    // is required. It should allow specifying where comments go
-    // with regard to header fields.
+    // Get the encoding type.
+    pub fn encoding(&self) -> EncodingType {
+        self.info.encoding.clone()
+    }
+
+    // Get the width as a u32.
+    pub fn width(&self) -> u32 {
+        self.info.width.value()
+    }
+
+    // Get the height as a u32.
+    pub fn height(&self) -> u32 {
+        self.info.height.value()
+    }
+
+    // Get the bit depth as a u16.
+    pub fn bit_depth(&self) -> u16 {
+        self.info.bit_depth.value()
+    }
+
+    // Get the number of channels as a u32.
+    pub fn channels(&self) -> u32 {
+        self.info.channels.value()
+    }
+
+    // Get a ref to the image data.
+    pub fn samples(&self) -> &SampleBuffer {
+        &self.samples
+    }
 }
-
-//
-//     // WRITE
-//     let path = Path::new(r"/path/to/image.png");
-//     let file = File::create(path).unwrap();
-//     let ref mut writer = BufWriter::new(file);
-//
-//     let mut encoder = netpbm::PPMEncoder::new(writer, width, height, bit_depth);
-
-//     let data = [255, 0, 0, 255, 0, 0, 0, 255];
-//     encoder.write_image_data(&data).unwrap();
-//     encoder.write_tuple((u8, u8, u8)); // only if PPM, PAM
-//     encoder.write_value(u8); // only if PBM, PGM
-//
-//
-
-//     // READ
-//     let decoder = netpbm::Decoder::new(File::open(r"path/to/image").unwrap());
-//     let mut reader = decoder.reader().unwrap(); // reads the header
-//
-//     let mut buf = vec![0; reader.output_buffer_size()];
-//
-//     let info = reader.next_image(&mut buf).unwrap();
-//     let bytes = &buf[..info.buffer_size()];
-//
-//     let bit_depth = reader.info().bit_depth;
-//     let width = reader.info().width;
-//     let height = reader.info().height;
-//     let num_channels = reader.info().num_channels;
-//

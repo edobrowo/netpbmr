@@ -1,4 +1,5 @@
-use crate::{header::MagicNumber, ppm::PPMImage};
+use crate::NetpbmError;
+use std::fmt;
 
 /// netpbm supports 4 types of images: PBM, PGM, PPM, and PAM.
 /// PBM, PGM, and PPM are further divided into their `raw` and
@@ -14,85 +15,12 @@ use crate::{header::MagicNumber, ppm::PPMImage};
 ///
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum NetpbmFormat {
-    /// PBM (Portable Bit Map) image.
-    ///
-    /// Each PBM image fundamentally consists of the image width,
-    /// the image height, and a sequence of bits.
-    /// There are `height` number of rows, each with `width` bits.
-    ///
-    /// PBM `raw` files consist of a sequence of PBM images.
-    /// Bits are byte-packed, with optional padding at the end of each
-    /// scan line. The `raw` format uses the magic number `P4`.
-    ///
-    /// PBM `plain` files consist of a single PBM image.
-    /// Bits are written as ASCII-encoded `0` or `1`.
-    /// The `plain` format uses the magic number `P1`.
-    ///
     PBMRaw,
     PBMPlain,
-
-    /// PGM (Portable Gray Map) image.
-    ///
-    /// Each PGM image fundamentally consists of the image width,
-    /// the image height, the bit depth, and a sequence of rows of
-    /// grey values. There are `height` number of rows, each with
-    /// `width` grey values.
-    ///
-    /// PGM `raw` files consist of a sequence of PGM images.
-    /// Grey values are serialized as unsigned binary integers.
-    /// The `raw` format uses the magic number `P5`.
-    ///
-    /// PGM `plain` files consist of a single PGM image.
-    /// Grey values are written as ASCII-encoded decimal numbers.
-    /// The `plain` format uses the magic number `P2`.
     PGMRaw,
     PGMPlain,
-
-    /// PPM (Portable Pixel Map) image formats.
-    ///
-    /// Each PPM image fundamentally consists of the image width,
-    /// the image height, the bit depth, and a sequence of rows of
-    /// color channel data. Each pixel is represented by a triplet
-    /// of color channel data (red, green, blue). There are `height`
-    /// number of rows, each with `width` color triplets.
-    ///
-    /// PPM `raw` files consist of a sequence of PPM images.
-    /// Color channel values are serialized as unsigned binary integers.
-    /// The `raw` format uses the magic number `P6`.
-    ///
-    /// PPM `plain` files consist of a single PPM image.
-    /// Color channel values are written as ASCII-encoded decimal numbers.
-    /// The `plain` format uses the magic number `P3`.
-    ///
-    PPMRaw(PPMImage),
+    PPMRaw,
     PPMPlain,
-
-    /// PAM (Portable Arbitrary Map) image format.
-    ///
-    /// PAM generalizes the other netpbm formats. PAM images consist
-    /// of a 2D array of tuples. Tuple components are called samples.
-    /// All tuples in the same image must have the same length.
-    /// This is referred to as the channel depth, or depth for short.
-    /// The image depth dictates the number of channels in the image.
-    ///
-    /// The maxval of an image specifies the maximum value that a
-    /// sample can take. It is the generalized term for bit depth.
-    ///
-    /// Each PAM image fundamentally consists of the image width,
-    /// the image height, the depth, the maxval, and a sequence of rows
-    /// of tuples. Each tuple consists of `depth` number of samples.
-    /// There are `height` number of rows, each with `width` tuples,
-    /// with all tuple samples ordered left-to-right on each row.
-    ///
-    /// PAM images support an optional `tuple type` field. It is an ASCII
-    /// string providing semantic information about the data contained
-    /// in the PAM image.
-    ///
-    /// PAM files consist of a sequence of PAM images.
-    /// PAM files only have one format, which is serialized
-    /// similar what is done with the `raw` format of
-    /// PBM, PGM, and PPM. The PAM format uses the magic number `P7`.
-    ///
     PAM,
 }
 
@@ -122,9 +50,344 @@ impl NetpbmFormat {
     }
 }
 
+/// Encoding type refers to whether the netpbm image is
+/// `raw` or `plain`.
+///
+/// Although never specified, PAM is considered `raw`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum EncodingType {
+    /// Encoding type where image data is encoded as bytes.
+    ///
+    /// The header is still encoded in ASCII.
+    ///
+    Raw,
+
+    /// Encoding type where image data is encoded as ASCII
+    /// integers separated with whitespace.
+    ///
+    /// The header is still encoded in ASCII.
+    ///
+    Plain,
+}
+
+/// Magic number field.
+///
+/// Each netpbm format has an assigned magic number. Every
+/// netpbm magic number consists of the two bytes
+/// `PN`, where N is a natural number represented in ASCII.
+///
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum MagicNumber {
+    /// PBM Plain
+    P1,
+    /// PGM Plain
+    P2,
+    /// PPM Plain
+    P3,
+    /// PBM Raw
+    P4,
+    /// PGM Raw
+    P5,
+    /// PPM Raw
+    P6,
+    /// PAM
+    P7,
+}
+
+impl fmt::Display for MagicNumber {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let magic = match self {
+            Self::P1 => "P1",
+            Self::P2 => "P2",
+            Self::P3 => "P3",
+            Self::P4 => "P4",
+            Self::P5 => "P5",
+            Self::P6 => "P6",
+            Self::P7 => "P7",
+        };
+        write!(f, "{}", magic)
+    }
+}
+
+/// Bit depth field.
+///
+/// netpbm specifies that formats must specify the
+/// maximum sample value in an image.
+///
+/// While PAM refers to this value as `maxval`, its type will
+/// be referred to as `BitDepth` in general.
+///
+/// The bit depth must be between 1 and 65535 inclusive.
+///
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct BitDepth(u16);
+
+impl BitDepth {
+    pub const MIN: u16 = 1;
+    pub const MAX: u16 = u16::MAX;
+
+    /// Create a new BitDepth from a u16.
+    pub fn new(value: u16) -> Result<Self, NetpbmError> {
+        if value > 0 {
+            Ok(Self(value))
+        } else {
+            Err(NetpbmError::InvalidBitDepth { value })
+        }
+    }
+
+    /// Get the BitDepth as a u16.
+    pub fn value(&self) -> u16 {
+        self.0
+    }
+}
+
+impl fmt::Display for BitDepth {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+/// Image dimension field.
+///
+/// Image dimensions in netpbm must be positive integers. There is
+/// no indication of maximum value, so the 32-bit unsigned
+/// bound is used.
+///
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct ImageDim(u32);
+
+impl ImageDim {
+    // Create a new ImageDim from a u32.
+    pub fn new(value: u32) -> Result<Self, NetpbmError> {
+        if value > 0 {
+            Ok(Self(value))
+        } else {
+            Err(NetpbmError::InvalidImageDim { value })
+        }
+    }
+
+    /// Get the ImageDim as a u32.
+    pub fn value(&self) -> u32 {
+        self.0
+    }
+}
+
+impl fmt::Display for ImageDim {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+/// Channel depth field.
+///
+/// The number of channels in a PAM image must be positive.
+///
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct ChannelDepth(u32);
+
+impl ChannelDepth {
+    // Create a new ChannelDepth from a u32.
+    pub fn new(value: u32) -> Result<Self, NetpbmError> {
+        if value > 0 {
+            Ok(Self(value))
+        } else {
+            Err(NetpbmError::InvalidChannelDepth { value })
+        }
+    }
+
+    /// Get the ChannelDepth as a u32.
+    pub fn value(&self) -> u32 {
+        self.0
+    }
+}
+
+impl fmt::Display for ChannelDepth {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+/// Type info field.
+///
+/// Type info provides semantic information about the
+/// data contained in a PAM image.
+///
+/// Type info is optional.
+///
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum TypeInfo {
+    Info(String),
+    Empty,
+}
+
+/// Metadata used during encoding and decoding.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Info {
+    /// The image format.
+    pub format: NetpbmFormat,
+
+    /// The image encoding type.
+    pub encoding: EncodingType,
+
+    /// The image width.
+    pub width: ImageDim,
+
+    /// The image height.
+    pub height: ImageDim,
+
+    /// The image bit depth. This is the maximum value
+    /// a sample can hold.
+    pub bit_depth: BitDepth,
+
+    /// The number of channels in the image. This is the
+    /// number of samples per tuple. E.g., RGB has 3
+    /// channels and greyscale has 1.
+    pub channels: ChannelDepth,
+}
+
+type InfoRes = Result<Info, NetpbmError>;
+
+impl Info {
+    /// Create a new info struct for PBM images.
+    pub fn new_pbm(encoding: EncodingType, width: u32, height: u32) -> InfoRes {
+        let format = match &encoding {
+            EncodingType::Raw => NetpbmFormat::PBMRaw,
+            EncodingType::Plain => NetpbmFormat::PBMPlain,
+        };
+
+        Ok(Info {
+            encoding,
+            format,
+            width: ImageDim::new(width)?,
+            height: ImageDim::new(height)?,
+            bit_depth: BitDepth::new(1).unwrap(),
+            channels: ChannelDepth::new(1).expect("Bitmap channel depth"),
+        })
+    }
+
+    /// Create a new info struct for PGM images.
+    pub fn new_pgm(encoding: EncodingType, width: u32, height: u32, bit_depth: u16) -> InfoRes {
+        let format = match &encoding {
+            EncodingType::Raw => NetpbmFormat::PGMRaw,
+            EncodingType::Plain => NetpbmFormat::PGMPlain,
+        };
+
+        Ok(Info {
+            encoding,
+            format,
+            width: ImageDim::new(width)?,
+            height: ImageDim::new(height)?,
+            bit_depth: BitDepth::new(bit_depth)?,
+            channels: ChannelDepth::new(1).expect("Greyscale channel depth"),
+        })
+    }
+
+    /// Create a new info struct for PPM images.
+    pub fn new_ppm(encoding: EncodingType, width: u32, height: u32, bit_depth: u16) -> InfoRes {
+        let format = match &encoding {
+            EncodingType::Raw => NetpbmFormat::PPMRaw,
+            EncodingType::Plain => NetpbmFormat::PPMPlain,
+        };
+
+        Ok(Info {
+            encoding,
+            format,
+            width: ImageDim::new(width)?,
+            height: ImageDim::new(height)?,
+            bit_depth: BitDepth::new(bit_depth)?,
+            channels: ChannelDepth::new(3).expect("RGB24 channel depth"),
+        })
+    }
+
+    /// Create a new info struct for PAM images.
+    pub fn new_pam(width: u32, height: u32, bit_depth: u16, channels: u32) -> InfoRes {
+        Ok(Info {
+            encoding: EncodingType::Raw,
+            format: NetpbmFormat::PAM,
+            width: ImageDim::new(width)?,
+            height: ImageDim::new(height)?,
+            bit_depth: BitDepth::new(bit_depth)?,
+            channels: ChannelDepth::new(channels)?,
+        })
+    }
+
+    /// Validate that u8 sample values agree with header info.
+    pub fn validate_u8_samples(&self, samples: &[u8]) -> Result<(), NetpbmError> {
+        // Check that the sample size is correct.
+        self.validate_sample_size(samples.len())?;
+
+        // Check samples against bit depth bound.
+        for (offset, &sample) in samples.iter().enumerate() {
+            if sample as u16 > self.bit_depth.value() {
+                return Err(NetpbmError::OversizedSample {
+                    offset,
+                    bit_depth: self.bit_depth,
+                });
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Validate that u16 sample values agree with header info.
+    pub fn validate_u16_samples(&self, samples: &[u16]) -> Result<(), NetpbmError> {
+        // Check that the sample size is correct.
+        self.validate_sample_size(samples.len())?;
+
+        // Check samples against bit depth bound.
+        for (offset, &sample) in samples.iter().enumerate() {
+            if sample > self.bit_depth.value() {
+                return Err(NetpbmError::OversizedSample {
+                    offset,
+                    bit_depth: self.bit_depth,
+                });
+            }
+        }
+
+        Ok(())
+    }
+
+    // Validate that the number of samples corresponds to the image dimensions.
+    fn validate_sample_size(&self, samples_len: usize) -> Result<(), NetpbmError> {
+        let expected_samples = self.width.value() * self.height.value() * self.channels.value();
+        if expected_samples != samples_len as u32 {
+            return Err(NetpbmError::MalformedInitArray {
+                data_size: samples_len,
+                width: self.width,
+                height: self.height,
+            });
+        }
+
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_bit_depth() {
+        assert!(BitDepth::new(1).is_ok());
+        assert!(BitDepth::new(255).is_ok());
+        assert!(BitDepth::new(65535).is_ok());
+        assert!(BitDepth::new(0).is_err());
+    }
+
+    #[test]
+    fn test_image_dim() {
+        assert!(ImageDim::new(1).is_ok());
+        assert!(ImageDim::new(0).is_err());
+        assert!(ImageDim::new(1000000).is_ok());
+    }
+
+    #[test]
+    fn test_channel_depth() {
+        assert!(ChannelDepth::new(1).is_ok());
+        assert!(ChannelDepth::new(3).is_ok());
+        assert!(ChannelDepth::new(0).is_err());
+        assert!(ChannelDepth::new(100).is_ok());
+    }
 
     #[test]
     fn test_magic() {

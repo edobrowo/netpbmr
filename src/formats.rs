@@ -1,4 +1,4 @@
-use crate::header::MagicNumber;
+use crate::{header::MagicNumber, ppm::PPMImage};
 
 /// netpbm supports 4 types of images: PBM, PGM, PPM, and PAM.
 /// PBM, PGM, and PPM are further divided into their `raw` and
@@ -64,7 +64,7 @@ pub enum NetpbmFormat {
     /// Color channel values are written as ASCII-encoded decimal numbers.
     /// The `plain` format uses the magic number `P3`.
     ///
-    PPMRaw,
+    PPMRaw(PPMImage),
     PPMPlain,
 
     /// PAM (Portable Arbitrary Map) image format.

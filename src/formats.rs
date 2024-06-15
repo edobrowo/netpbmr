@@ -54,16 +54,19 @@ impl NetpbmFormat {
 /// `raw` or `plain`.
 ///
 /// Although never specified, PAM is considered `raw`.
+///
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum EncodingType {
-    /// Encoding type where image data is encoded as bytes.
+    /// Sample data is serialized as bytes.
     ///
     /// The header is still encoded in ASCII.
     ///
     Raw,
 
-    /// Encoding type where image data is encoded as ASCII
-    /// integers separated with whitespace.
+    /// Sample data is written as ASCII integers separated
+    /// by whitespace.
+    ///
+    /// Additionally, each line cannot be longer than 70 characters.
     ///
     /// The header is still encoded in ASCII.
     ///

@@ -1,6 +1,7 @@
 use formats::*;
 use std::error::Error;
 use std::fmt;
+use std::io;
 
 pub mod formats;
 pub mod pam;
@@ -33,6 +34,8 @@ pub enum NetpbmError {
         length: usize,
         channel_depth: ChannelDepth,
     },
+    /// Encoding or decoding operation failed.
+    IOOperationFailed { info: String },
 }
 
 impl Error for NetpbmError {
@@ -89,6 +92,17 @@ impl fmt::Display for NetpbmError {
                     length, channel_depth
                 )
             }
+            IOOperationFailed { ref info } => {
+                write!(f, "IO operation failed: {}", info)
+            }
+        }
+    }
+}
+
+impl From<io::Error> for NetpbmError {
+    fn from(err: io::Error) -> NetpbmError {
+        NetpbmError::IOOperationFailed {
+            info: err.to_string(),
         }
     }
 }

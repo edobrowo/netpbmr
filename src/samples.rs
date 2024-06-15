@@ -1,21 +1,11 @@
 use crate::{Info, NetpbmError};
-
-/// Indicates how to encode a PNM file.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub enum EncodingType {
-    /// Sample data is serialized as bytes.
-    Raw,
-
-    /// Sample data is written as ASCII integers separated
-    /// by whitespace.
-    Plain,
-}
+use std::fmt;
 
 /// Generalizes over u8 and u16 since netpbm permits
 /// samples to be either 8- or 16-bit.
 pub trait SampleType {
-    /// The sample type, either u8 or u16.
-    type Sample;
+    /// The sample type.
+    type Sample: fmt::Display;
 
     /// Validate that the samples agree with the header info.
     fn validate_samples(info: &Info, samples: &[Self::Sample]) -> Result<(), NetpbmError>;

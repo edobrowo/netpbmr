@@ -25,11 +25,30 @@
 //! PBM, PGM, and PPM. The PAM format uses the magic number `P7`.
 
 use crate::{Image, NetpbmError};
+use std::io;
 
-pub struct PAMEncoder {
-    //
+/// PAM encoder.
+#[derive(Debug)]
+pub struct Encoder<W: io::Write> {
+    writer: W,
 }
 
-pub struct PAMDecoder {
-    //
+impl<W: io::Write> Encoder<W> {
+    /// Create a new PAM encoder with the given writer.
+    pub fn new(writer: W) -> Self {
+        Encoder { writer }
+    }
+}
+
+/// PAM decoder.
+#[derive(Debug)]
+pub struct Decoder<R: io::Read> {
+    reader: R,
+}
+
+impl<R: io::Read> Decoder<R> {
+    /// Create a new PAM decoder with the given reader.
+    pub fn new(reader: R) -> Self {
+        Decoder { reader }
+    }
 }

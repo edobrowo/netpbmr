@@ -14,11 +14,30 @@
 //! The `plain` format uses the magic number `P2`.
 
 use crate::{Image, NetpbmError};
+use std::io;
 
-pub struct PGMEncoder {
-    //
+/// PGM encoder.
+#[derive(Debug)]
+pub struct Encoder<W: io::Write> {
+    writer: W,
 }
 
-pub struct PGMDecoder {
-    //
+impl<W: io::Write> Encoder<W> {
+    /// Create a new PGM encoder with the given writer.
+    pub fn new(writer: W) -> Self {
+        Encoder { writer }
+    }
+}
+
+/// PGM decoder.
+#[derive(Debug)]
+pub struct Decoder<R: io::Read> {
+    reader: R,
+}
+
+impl<R: io::Read> Decoder<R> {
+    /// Create a new PGM decoder with the given reader.
+    pub fn new(reader: R) -> Self {
+        Decoder { reader }
+    }
 }

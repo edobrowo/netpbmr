@@ -14,11 +14,30 @@
 //!
 
 use crate::{Image, NetpbmError};
+use std::io;
 
-pub struct PBMEncoder {
-    //
+/// PBM encoder.
+#[derive(Debug)]
+pub struct Encoder<W: io::Write> {
+    writer: W,
 }
 
-pub struct PBMDecoder {
-    //
+impl<W: io::Write> Encoder<W> {
+    /// Create a new PBM encoder with the given writer.
+    pub fn new(writer: W) -> Self {
+        Encoder { writer }
+    }
+}
+
+/// PBM decoder.
+#[derive(Debug)]
+pub struct Decoder<R: io::Read> {
+    reader: R,
+}
+
+impl<R: io::Read> Decoder<R> {
+    /// Create a new PBM decoder with the given reader.
+    pub fn new(reader: R) -> Self {
+        Decoder { reader }
+    }
 }

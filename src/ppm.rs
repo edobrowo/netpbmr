@@ -16,13 +16,30 @@
 //!
 
 use crate::{Image, NetpbmError};
+use std::io;
 
+/// PPM encoder.
 #[derive(Debug)]
-pub struct PPMEncoder {
-    //
+pub struct Encoder<W: io::Write> {
+    writer: W,
 }
 
+impl<W: io::Write> Encoder<W> {
+    /// Create a new PPM encoder with the given writer.
+    pub fn new(writer: W) -> Self {
+        Encoder { writer }
+    }
+}
+
+/// PPM decoder.
 #[derive(Debug)]
-pub struct PPMDecoder {
-    //
+pub struct Decoder<R: io::Read> {
+    reader: R,
+}
+
+impl<R: io::Read> Decoder<R> {
+    /// Create a new PPM decoder with the given reader.
+    pub fn new(reader: R) -> Self {
+        Decoder { reader }
+    }
 }

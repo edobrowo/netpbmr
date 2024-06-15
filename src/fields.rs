@@ -25,10 +25,9 @@ pub enum MagicNumber {
     P7,
 }
 
-impl MagicNumber {
-    /// Get the corresponding magic number bytes.
-    pub fn value(&self) -> &'static str {
-        match self {
+impl fmt::Display for MagicNumber {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let magic = match self {
             Self::P1 => "P1",
             Self::P2 => "P2",
             Self::P3 => "P3",
@@ -36,13 +35,8 @@ impl MagicNumber {
             Self::P5 => "P5",
             Self::P6 => "P6",
             Self::P7 => "P7",
-        }
-    }
-}
-
-impl fmt::Display for MagicNumber {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.value())
+        };
+        write!(f, "{}", magic)
     }
 }
 
@@ -155,4 +149,33 @@ impl fmt::Display for ChannelDepth {
 pub enum TypeInfo {
     Info(String),
     Empty,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_bit_depth() {
+        assert!(BitDepth::new(1).is_ok());
+        assert!(BitDepth::new(255).is_ok());
+        assert!(BitDepth::new(65535).is_ok());
+        assert!(BitDepth::new(0).is_err());
+        assert!(BitDepth::new(100000).is_err());
+    }
+
+    #[test]
+    fn test_image_dim() {
+        assert!(ImageDim::new(1).is_ok());
+        assert!(ImageDim::new(0).is_err());
+        assert!(ImageDim::new(1000000).is_ok());
+    }
+
+    #[test]
+    fn test_channel_depth() {
+        assert!(ChannelDepth::new(1).is_ok());
+        assert!(ChannelDepth::new(3).is_ok());
+        assert!(ChannelDepth::new(0).is_err());
+        assert!(ChannelDepth::new(100).is_ok());
+    }
 }

@@ -4,19 +4,12 @@ use std::fmt;
 use std::io;
 
 pub mod fields;
+pub mod formats;
 pub mod pam;
 pub mod pbm;
 pub mod pgm;
 pub mod pnm;
 pub mod ppm;
-
-pub trait NetpbmFileFormat {
-    /// Write the netpbm file into a writer.
-    fn write_to<W: io::Write>(&self, writer: &mut W) -> io::Result<usize>;
-
-    /// Parse a netpbm file from a reader.
-    fn parse<R: io::Read>(reader: &mut R) -> Self;
-}
 
 /// netpbm errors.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -101,3 +94,35 @@ impl fmt::Display for NetpbmError {
         }
     }
 }
+
+//
+//     // WRITE
+//     let path = Path::new(r"/path/to/image.png");
+//     let file = File::create(path).unwrap();
+//     let ref mut writer = BufWriter::new(file);
+//
+//     let mut encoder = netpbm::Encoder::new_ppm(writer, width, height, bit_depth); // new_pbm(writer, width, height), new_pgm(writer, width, height), new_pam(writer, width, height, bit_depth channels)
+//
+//     let mut writer = encoder.writer().unwrap(); // writes the header
+//
+//     let data = [255, 0, 0, 255, 0, 0, 0, 255];
+//     writer.write_image_data(&data).unwrap();
+//     writer.write_tuple((u8, u8, u8)); // only if PPM, PAM
+//     writer.write_value(u8); // only if PBM, PGM
+//
+//
+
+//     // READ
+//     let decoder = netpbm::Decoder::new(File::open(r"path/to/image").unwrap());
+//     let mut reader = decoder.reader().unwrap(); // reads the header
+//
+//     let mut buf = vec![0; reader.output_buffer_size()];
+//
+//     let info = reader.next_image(&mut buf).unwrap();
+//     let bytes = &buf[..info.buffer_size()];
+//
+//     let bit_depth = reader.info().bit_depth;
+//     let width = reader.info().width;
+//     let height = reader.info().height;
+//     let num_channels = reader.info().num_channels;
+//

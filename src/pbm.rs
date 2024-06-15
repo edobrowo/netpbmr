@@ -1,15 +1,5 @@
-use crate::{fields::*, NetpbmError, NetpbmFileFormat};
+use crate::{fields::*, NetpbmError};
 
-/// PBM (Portable Bit Map) image.
-///
-/// Each PBM image fundamentally consists of the image width,
-/// the image height, and a sequence of bits.
-/// There are `height` number of rows, each with `width` bits.
-///
-/// Each PBM image also has associated with it a magic number,
-/// which is either the bytes `P1` or `P4`. The magic number indicates
-/// the PBM file format (see PbmFile for details). The file format
-/// indicates how the PBM file is serialized.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PbmImage {
     bits: Vec<u8>,
@@ -57,12 +47,6 @@ impl PbmImage {
     }
 }
 
-/// PBM `raw` file format.
-///
-/// `raw` PBM files consist of a sequence of PBM images.
-/// Bits are serialized directly.
-/// The `raw` format uses the magic number `P4`.
-///
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PbmRaw {
     images: Vec<PbmImage>,
@@ -98,12 +82,6 @@ impl Default for PbmRaw {
     }
 }
 
-/// PBM `plain` file format.
-///
-/// `plain` PBM files consist of a single PBM image.
-/// Bits are written as ASCII-encoded `0` or `1`.
-/// The `plain` format uses the magic number `P1`.
-///
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PbmPlain {
     image: PbmImage,

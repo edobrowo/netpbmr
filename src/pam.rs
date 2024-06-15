@@ -1,28 +1,5 @@
-use crate::{fields::*, NetpbmError, NetpbmFileFormat};
+use crate::{fields::*, NetpbmError};
 
-/// PAM (Portable Arbitrary Map) image.
-///
-/// PAM generalizes the netpbm format. PAM images consist
-/// of a 2D array of tuples whose components are called samples.
-/// All tuples in the same image must have the same length,
-/// which is called the depth. The image depth dictates the number
-/// of channels in the image.
-///
-/// The maxval of an image specifies the maximum value that a
-/// sample can take.
-///
-/// Each PAM image fundamentally consists of the image width,
-/// the image height, the depth, the maxval, and a sequence of rows
-/// of tuples. Each tuple consists of `depth` number of samples.
-/// There are `height` number of rows, each with `width` tuples,
-/// with all tuple samples ordered left-to-right on each row.
-///
-/// PAM images support an optional `tuple type` field. It is an ASCII
-/// string providing semantic information about the data contained
-/// in the PAM image.
-///
-/// Each PAM image also has associated with the magic number `P7`.
-///
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PamImage {
     tuples: Vec<Vec<u16>>,
@@ -100,14 +77,6 @@ impl PamImage {
     }
 }
 
-/// PAM file format.
-///
-/// PAM files consist of a sequence of PAM images.
-///
-/// PAM files only have one format, which is serialized
-/// similar what is done with the `raw` format of
-/// PBM, PGM, and PPM.
-///
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PamRaw {
     images: Vec<PamImage>,

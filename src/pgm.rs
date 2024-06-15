@@ -1,16 +1,5 @@
-use crate::{fields::*, NetpbmError, NetpbmFileFormat};
+use crate::{fields::*, NetpbmError};
 
-/// PGM (Portable Gray Map) image.
-///
-/// Each PGM image fundamentally consists of the image width,
-/// the image height, the bit depth, and a sequence of rows of
-/// grey values. There are `height` number of rows, each with
-/// `width` grey values.
-///
-/// Each PGM image also has associated with it a magic number,
-/// which is either the bytes `P2` or `P5`. The magic number indicates
-/// the PGM file format (see PgmFile for details). The file format
-/// indicates how the PGM file is serialized.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PgmImage {
     grey_values: Vec<u16>,
@@ -75,12 +64,6 @@ impl PgmImage {
     }
 }
 
-/// PGM `raw` file format.
-///
-/// `raw` PGM files consist of a sequence of PGM images.
-/// Grey values are serialized as unsigned binary integers.
-/// The `raw` format uses the magic number `P5`.
-///
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PgmRaw {
     images: Vec<PgmImage>,
@@ -116,12 +99,6 @@ impl Default for PgmRaw {
     }
 }
 
-/// PGM `plain` file format.
-///
-/// `plain` PGM files consist of a single PGM image.
-/// Grey values are written as ASCII-encoded decimal numbers.
-/// The `plain` format uses the magic number `P2`.
-///
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PgmPlain {
     image: PgmImage,

@@ -24,6 +24,7 @@
 //! similar what is done with the `raw` format of
 //! PBM, PGM, and PPM. The PAM format uses the magic number `P7`.
 
+use crate::{formats::EncodingType, samples::*, Info};
 use crate::{Image, NetpbmError};
 use std::io;
 

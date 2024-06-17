@@ -142,6 +142,11 @@ impl BitDepth {
     pub fn value(&self) -> u16 {
         self.0
     }
+
+    /// Determine if the bit depth requires more multiple bytes to encode
+    pub fn is_multi_byte(&self) -> bool {
+        self.value() > 255
+    }
 }
 
 impl fmt::Display for BitDepth {
@@ -243,8 +248,8 @@ pub struct Info {
     pub bit_depth: BitDepth,
 
     /// The number of channels in the image. This is the
-    /// number of samples per tuple. E.g., RGB has 3
-    /// channels and greyscale has 1.
+    /// number of samples per tuple.
+    /// PPM has 3 channels, and PBM and PGM have 1 channel.
     pub channels: ChannelDepth,
 }
 
@@ -415,5 +420,15 @@ mod tests {
         assert!(!PPMRaw.is_pnm());
         assert!(!PPMPlain.is_pnm());
         assert!(PAM.is_pnm());
+    }
+
+    #[test]
+    fn test_samples_valid() {
+        //
+    }
+
+    #[test]
+    fn test_samples_invalid() {
+        //
     }
 }

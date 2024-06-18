@@ -25,7 +25,7 @@
 //! PBM, PGM, and PPM. The PAM format uses the magic number `P7`.
 
 use crate::{formats::EncodingType, samples::*, Info};
-use crate::{Image, NetpbmError};
+use crate::{Image, NetpbmError, TypeInfo};
 use std::io;
 
 /// PAM encoder.
@@ -38,6 +38,67 @@ impl<W: io::Write> Encoder<W> {
     /// Create a new PAM encoder with the given writer.
     pub fn new(writer: W) -> Self {
         Encoder { writer }
+    }
+
+    /// Write one PAM image.
+    ///
+    /// If the bit depth is less than 256, samples will be
+    /// truncated to the lower byte.
+    ///
+    pub fn write<T: SampleType>(
+        &mut self,
+        width: u32,
+        height: u32,
+        bit_depth: u16,
+        channels: u32,
+        type_info: &[TypeInfo],
+        samples: &[T::Sample],
+    ) -> Result<(), NetpbmError> {
+        let info = Info::new_pam(width, height, bit_depth, channels)?;
+        let image = Image::new::<T>(samples, info)?;
+
+        let mut buf = Self::build_header(&image, type_info);
+
+        match image.samples {
+            SampleBuffer::EIGHT(samples) => {
+                buf.extend(samples);
+            }
+            SampleBuffer::SIXTEEN(samples) => {
+                // Truncate samples to one byte if the bit depth is less than 256.
+                if !image.info.bit_depth.is_multi_byte() {
+                    buf.extend(samples.iter().map(|s| (s & 0xFF) as u8));
+                } else {
+                    // netpbm specifies that multi-byte samples are big-endian.
+                    buf.extend(samples.iter().flat_map(|s| s.to_be_bytes()));
+                }
+            }
+        }
+
+        self.writer.write_all(&buf)?;
+
+        Ok(())
+    }
+
+    /// Build a PAM header.
+    fn build_header(image: &Image, _: &[TypeInfo]) -> Vec<u8> {
+        // TODO : typeinfo lol
+        format!(
+            "
+            {}\n
+            WIDTH {}\n
+            HEIGHT {}\n
+            DEPTH {}\n
+            MAXVAL {}\n
+            ENDHDR
+            ",
+            image.format().magic(),
+            image.width(),
+            image.height(),
+            image.channels(),
+            image.bit_depth(),
+        )
+        .as_bytes()
+        .to_vec()
     }
 }
 

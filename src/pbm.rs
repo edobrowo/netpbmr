@@ -84,7 +84,7 @@ impl<W: io::Write> Encoder<W> {
         Ok(())
     }
 
-    // Build a PBM header.
+    /// Build a PBM header.
     fn build_header(image: &Image) -> Vec<u8> {
         format!(
             "{}\n{} {}\n",
@@ -96,7 +96,7 @@ impl<W: io::Write> Encoder<W> {
         .to_vec()
     }
 
-    // Build the raster as lines of ASCII sample values.
+    /// Build the raster as lines of ASCII sample values.
     fn build_lines<T: SampleType>(samples: &[T::Sample]) -> Vec<u8> {
         // Write 35 samples per line
         samples

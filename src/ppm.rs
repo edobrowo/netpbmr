@@ -33,8 +33,8 @@ impl<W: io::Write> Encoder<W> {
 
     /// Write one PPM image in either `raw` or `plain` format.
     ///
-    /// If the bit depth is less than 256, the lower byte of
-    /// each sample will be written regardless of sample type.
+    /// If the bit depth is less than 256, samples will be
+    /// truncated to the lower byte.
     ///
     /// No checks are made on the number of `plain` images
     /// written. The netpbm spec dictates that `plain` files
@@ -96,7 +96,7 @@ impl<W: io::Write> Encoder<W> {
         Ok(())
     }
 
-    // Build a PPM header.
+    /// Build a PPM header.
     fn build_header(image: &Image) -> Vec<u8> {
         format!(
             "{}\n{} {} {}\n",
@@ -109,7 +109,7 @@ impl<W: io::Write> Encoder<W> {
         .to_vec()
     }
 
-    // Build the raster as lines of ASCII RGB triplets.
+    /// Build the raster as lines of ASCII RGB triplets.
     fn build_triplets<T: SampleType>(samples: &[T::Sample]) -> Vec<u8> {
         samples
             .chunks_exact(3)

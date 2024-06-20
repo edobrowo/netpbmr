@@ -37,33 +37,26 @@ impl<W: io::Write> Encoder<W> {
     /// caller to ensure they invoke this method only once for
     /// `plain` files.
     ///
-    pub fn write<T: SampleType>(
+    pub fn write(
         &mut self,
         encoding: EncodingType,
         width: u32,
         height: u32,
-        samples: &[T::Sample],
+        samples: &[u8],
     ) -> Result<(), NetpbmError> {
         let info = Info::new_pbm(encoding, width, height)?;
-        let image = Image::new::<T>(samples, info)?;
+        info.validate_u8_samples(samples);
         match encoding {
-            EncodingType::Raw => self.write_raw::<T>(&image),
-            EncodingType::Plain => self.write_plain::<T>(&image),
+            EncodingType::Raw => self.write_raw(&info, samples),
+            EncodingType::Plain => self.write_plain(&info, samples),
         }
     }
 
     /// Write a PBM image with `raw` encoding.
-    fn write_raw<T: SampleType>(&mut self, image: &Image) -> Result<(), NetpbmError> {
-        let mut buf = Self::build_header(image);
+    fn write_raw(&mut self, info: &Info, samples: &[u8]) -> Result<(), NetpbmError> {
+        let mut buf = Self::build_header(info);
 
-        match image.samples {
-            SampleBuffer::EIGHT(samples) => {
-                // TODO : packing
-            }
-            SampleBuffer::SIXTEEN(samples) => {
-                // TODO : packing
-            }
-        }
+        // TODO : packing
 
         self.writer.write_all(&buf)?;
 
@@ -71,13 +64,9 @@ impl<W: io::Write> Encoder<W> {
     }
 
     /// Write a PBM image with `plain` encoding.
-    fn write_plain<T: SampleType>(&mut self, image: &Image) -> Result<(), NetpbmError> {
-        let mut buf = Self::build_header(image).to_vec();
-
-        match image.samples {
-            SampleBuffer::EIGHT(samples) => buf.extend(Self::build_lines::<u8>(samples)),
-            SampleBuffer::SIXTEEN(samples) => buf.extend(Self::build_lines::<u16>(samples)),
-        }
+    fn write_plain(&mut self, info: &Info, samples: &[u8]) -> Result<(), NetpbmError> {
+        let mut buf = Self::build_header(info).to_vec();
+        buf.extend(Self::build_lines(samples));
 
         self.writer.write_all(&buf)?;
 
@@ -85,19 +74,14 @@ impl<W: io::Write> Encoder<W> {
     }
 
     /// Build a PBM header.
-    fn build_header(image: &Image) -> Vec<u8> {
-        format!(
-            "{}\n{} {}\n",
-            image.format().magic(),
-            image.width(),
-            image.height(),
-        )
-        .as_bytes()
-        .to_vec()
+    fn build_header(info: &Info) -> Vec<u8> {
+        format!("{}\n{} {}\n", info.format.magic(), info.width, info.height,)
+            .as_bytes()
+            .to_vec()
     }
 
     /// Build the raster as lines of ASCII sample values.
-    fn build_lines<T: SampleType>(samples: &[T::Sample]) -> Vec<u8> {
+    fn build_lines(samples: &[u8]) -> Vec<u8> {
         // Write 35 samples per line
         samples
             .chunks(35)

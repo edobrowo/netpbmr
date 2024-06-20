@@ -77,7 +77,7 @@ impl<W: io::Write> Encoder<W> {
         samples: &[u16],
     ) -> Result<(), NetpbmError> {
         let info = Info::new_ppm(encoding, width, height, bit_depth)?;
-        info.validate_u8_samples(samples)?;
+        info.validate_u16_samples(samples)?;
         match encoding {
             EncodingType::Raw => self.write_raw_u16(&info, samples),
             EncodingType::Plain => self.write_plain_u16(&info, samples),
@@ -93,7 +93,7 @@ impl<W: io::Write> Encoder<W> {
     }
 
     /// Write a PPM image with `plain` encoding.
-    fn write_plain_u8(&mut self, info: &Info, samples: &[u16]) -> Result<(), NetpbmError> {
+    fn write_plain_u8(&mut self, info: &Info, samples: &[u8]) -> Result<(), NetpbmError> {
         let mut buf = Self::build_header(info).to_vec();
         buf.extend(Self::build_triplets_u8(samples));
         self.writer.write_all(&buf)?;
@@ -188,10 +188,6 @@ mod tests {
         fn new() -> Self {
             ImageBuffer { buffer: Vec::new() }
         }
-
-        fn clear(&self) {
-            self.buffer.clear()
-        }
     }
 
     impl io::Write for ImageBuffer {
@@ -201,14 +197,13 @@ mod tests {
         }
 
         fn flush(&mut self) -> io::Result<()> {
-            Ok(())
+            Ok(self.buffer.clear())
         }
     }
 
     #[test]
-    fn test_ppm() {
-        let mut buf = ImageBuffer::new();
-        let mut enc = Encoder::new(buf);
+    fn test_write_ppm_raw() {
+        let mut enc = Encoder::new(ImageBuffer::new());
 
         let data: Vec<u8> = vec![
             255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 0, 255, 255, 255, 0, 0, 0,
@@ -221,23 +216,54 @@ mod tests {
         let res = enc.write(EncodingType::Raw, 3, 2, 255, &data);
         assert!(res.is_ok());
         assert_eq!(enc.writer.buffer[..], expected[..]);
+    }
 
-        buf.clear();
+    #[test]
+    fn test_write_ppm_plain() {
+        let mut enc = Encoder::new(ImageBuffer::new());
 
         let data: Vec<u8> = vec![
             255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 0, 255, 255, 255, 0, 0, 0,
         ];
         let expected =
-            format!("P3\n3 2 255\n255 0 0\n0 255 0\n0 0 255\n255 255 0\n255 255 255\n0 0 0")
-                .to_bytes();
+            format!("P3\n3 2 255\n255 0 0\n0 255 0\n0 0 255\n255 255 0\n255 255 255\n0 0 0\n");
 
         let res = enc.write(EncodingType::Plain, 3, 2, 255, &data);
         assert!(res.is_ok());
-        assert_eq!(enc.writer.buffer[..], expected[..]);
+        assert_eq!(enc.writer.buffer[..], *expected.as_bytes());
     }
 
     #[test]
-    fn test_ppm_wide() {
+    fn test_write_ppm_wide_raw() {
+        let mut enc = Encoder::new(ImageBuffer::new());
+
+        let data: Vec<u16> = vec![
+            1056, 0, 0, 0, 1056, 0, 0, 0, 1056, 1056, 1056, 0, 1056, 1056, 1056, 0, 0, 0,
+        ];
+        let expected = [
+            80, 54, 10, 51, 32, 50, 32, 50, 48, 52, 56, 10, 4, 32, 0, 0, 0, 0, 0, 0, 4, 32, 0, 0,
+            0, 0, 0, 0, 4, 32, 4, 32, 4, 32, 0, 0, 4, 32, 4, 32, 4, 32, 0, 0, 0, 0, 0, 0,
+        ];
+
+        let res = enc.write_wide(EncodingType::Raw, 3, 2, 2048, &data);
+        assert!(res.is_ok());
+        assert_eq!(enc.writer.buffer[..], expected[..]);
         assert!(true)
+    }
+
+    #[test]
+    fn test_write_ppm_wide_plain() {
+        let mut enc = Encoder::new(ImageBuffer::new());
+
+        let data: Vec<u16> = vec![
+            1056, 0, 0, 0, 1056, 0, 0, 0, 1056, 1056, 1056, 0, 1056, 1056, 1056, 0, 0, 0,
+        ];
+        let expected = format!(
+            "P3\n3 2 2048\n1056 0 0\n0 1056 0\n0 0 1056\n1056 1056 0\n1056 1056 1056\n0 0 0\n"
+        );
+
+        let res = enc.write_wide(EncodingType::Plain, 3, 2, 2048, &data);
+        assert!(res.is_ok());
+        assert_eq!(enc.writer.buffer[..], *expected.as_bytes());
     }
 }

@@ -171,3 +171,97 @@ impl<R: io::Read> Decoder<R> {
         Decoder { reader }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[derive(Debug)]
+    struct ImageBuffer {
+        buffer: Vec<u8>,
+    }
+
+    impl ImageBuffer {
+        fn new() -> Self {
+            ImageBuffer { buffer: Vec::new() }
+        }
+    }
+
+    impl io::Write for ImageBuffer {
+        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            self.buffer.extend_from_slice(buf);
+            Ok(buf.len())
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn test_write_ppm_raw() {
+        let mut enc = Encoder::new(ImageBuffer::new());
+
+        let data: Vec<u8> = vec![
+            255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0,
+        ];
+        let expected = [
+            80, 53, 10, 52, 32, 52, 32, 50, 53, 53, 10, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0,
+            255, 0, 255, 0, 255, 0,
+        ];
+
+        let res = enc.write(EncodingType::Raw, 4, 4, 255, &data);
+        assert!(res.is_ok());
+        assert_eq!(enc.writer.buffer[..], expected[..]);
+    }
+
+    #[test]
+    fn test_write_ppm_plain() {
+        let mut enc = Encoder::new(ImageBuffer::new());
+
+        let data: Vec<u8> = vec![
+            255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0,
+        ];
+        let expected = format!(
+            "P2\n4 4 255\n255\n0\n255\n0\n255\n0\n255\n0\n255\n0\n255\n0\n255\n0\n255\n0\n"
+        );
+
+        let res = enc.write(EncodingType::Plain, 4, 4, 255, &data);
+        assert!(res.is_ok());
+        assert_eq!(enc.writer.buffer[..], *expected.as_bytes());
+    }
+
+    #[test]
+    fn test_write_ppm_wide_raw() {
+        let mut enc = Encoder::new(ImageBuffer::new());
+
+        let data: Vec<u16> = vec![
+            1056, 0, 1056, 0, 1056, 0, 1056, 0, 1056, 0, 1056, 0, 1056, 0, 1056, 0,
+        ];
+        let expected = [
+            80, 53, 10, 52, 32, 52, 32, 50, 48, 52, 56, 10, 4, 32, 0, 0, 4, 32, 0, 0, 4, 32, 0, 0,
+            4, 32, 0, 0, 4, 32, 0, 0, 4, 32, 0, 0, 4, 32, 0, 0, 4, 32, 0, 0,
+        ];
+
+        let res = enc.write_wide(EncodingType::Raw, 4, 4, 2048, &data);
+        assert!(res.is_ok());
+        assert_eq!(enc.writer.buffer[..], expected[..]);
+        assert!(true)
+    }
+
+    #[test]
+    fn test_write_ppm_wide_plain() {
+        let mut enc = Encoder::new(ImageBuffer::new());
+
+        let data: Vec<u16> = vec![
+            1056, 0, 1056, 0, 1056, 0, 1056, 0, 1056, 0, 1056, 0, 1056, 0, 1056, 0,
+        ];
+        let expected = format!(
+            "P2\n4 4 2048\n1056\n0\n1056\n0\n1056\n0\n1056\n0\n1056\n0\n1056\n0\n1056\n0\n1056\n0\n"
+        );
+
+        let res = enc.write_wide(EncodingType::Plain, 4, 4, 2048, &data);
+        assert!(res.is_ok());
+        assert_eq!(enc.writer.buffer[..], *expected.as_bytes());
+    }
+}

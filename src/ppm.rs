@@ -197,7 +197,7 @@ mod tests {
         }
 
         fn flush(&mut self) -> io::Result<()> {
-            Ok(self.buffer.clear())
+            Ok(())
         }
     }
 

@@ -45,7 +45,7 @@ impl<W: io::Write> Encoder<W> {
         samples: &[u8],
     ) -> Result<(), NetpbmError> {
         let info = Info::new_pbm(encoding, width, height)?;
-        info.validate_u8_samples(samples);
+        info.validate_u8_samples(samples)?;
         match encoding {
             EncodingType::Raw => self.write_raw(&info, samples),
             EncodingType::Plain => self.write_plain(&info, samples),

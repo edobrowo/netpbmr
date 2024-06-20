@@ -28,10 +28,10 @@ impl NetpbmFormat {
     /// PNM (Portable Any Map) generalizes PBM, PGM, and PPM formats.
     pub fn is_pnm(&self) -> bool {
         use NetpbmFormat::*;
-        return matches!(
+        matches!(
             self,
             PBMRaw | PBMPlain | PGMRaw | PGMPlain | PPMRaw | PPMPlain
-        );
+        )
     }
 
     /// Get the magic number associated with the format.

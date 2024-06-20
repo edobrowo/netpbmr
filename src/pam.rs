@@ -52,7 +52,7 @@ impl<W: io::Write> Encoder<W> {
         samples: &[u8],
     ) -> Result<(), NetpbmError> {
         let info = Info::new_pam(width, height, bit_depth, channels)?;
-        info.validate_u8_samples(samples);
+        info.validate_u8_samples(samples)?;
 
         let mut buf = Self::build_header(&info, type_info);
         buf.extend(samples);
@@ -76,7 +76,7 @@ impl<W: io::Write> Encoder<W> {
         samples: &[u16],
     ) -> Result<(), NetpbmError> {
         let info = Info::new_pam(width, height, bit_depth, channels)?;
-        info.validate_u16_samples(samples);
+        info.validate_u16_samples(samples)?;
 
         let mut buf = Self::build_header(&info, type_info);
 

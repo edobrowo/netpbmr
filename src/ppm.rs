@@ -15,8 +15,8 @@
 //! The `plain` format uses the magic number `P3`.
 //!
 
-use crate::{formats::EncodingType, samples::*, Info};
-use crate::{Image, NetpbmError};
+use crate::NetpbmError;
+use crate::{formats::EncodingType, Info};
 use std::io;
 
 /// PPM encoder.
@@ -31,10 +31,8 @@ impl<W: io::Write> Encoder<W> {
         Encoder { writer }
     }
 
-    /// Write one PPM image in either `raw` or `plain` format.
-    ///
-    /// If the bit depth is less than 256, samples will be
-    /// truncated to the lower byte.
+    /// Write one PPM image in either `raw` or `plain` format
+    /// given one-byte samples.
     ///
     /// No checks are made on the number of `plain` images
     /// written. The netpbm spec dictates that `plain` files
@@ -42,75 +40,117 @@ impl<W: io::Write> Encoder<W> {
     /// caller to ensure they invoke this method only once for
     /// `plain` files.
     ///
-    pub fn write<T: SampleType>(
+    pub fn write(
         &mut self,
         encoding: EncodingType,
         width: u32,
         height: u32,
         bit_depth: u16,
-        samples: &[T::Sample],
+        samples: &[u8],
     ) -> Result<(), NetpbmError> {
         let info = Info::new_ppm(encoding, width, height, bit_depth)?;
-        let image = Image::new::<T>(samples, info)?;
+        info.validate_u8_samples(samples)?;
         match encoding {
-            EncodingType::Raw => self.write_raw::<T>(&image),
-            EncodingType::Plain => self.write_plain::<T>(&image),
+            EncodingType::Raw => self.write_raw_u8(&info, samples),
+            EncodingType::Plain => self.write_plain_u8(&info, samples),
+        }
+    }
+
+    /// Write one PPM image in either `raw` or `plain` format
+    /// given two-byte samples.
+    ///
+    /// No checks are made on the number of `plain` images
+    /// written. The netpbm spec dictates that `plain` files
+    /// should only have a single image. It is up to the client
+    /// caller to ensure they invoke this method only once for
+    /// `plain` files.
+    ///
+    /// If the bit depth is less than 256, samples will be
+    /// truncated to the lower byte.
+    ///
+    pub fn write_wide(
+        &mut self,
+        encoding: EncodingType,
+        width: u32,
+        height: u32,
+        bit_depth: u16,
+        samples: &[u16],
+    ) -> Result<(), NetpbmError> {
+        let info = Info::new_ppm(encoding, width, height, bit_depth)?;
+        info.validate_u8_samples(samples)?;
+        match encoding {
+            EncodingType::Raw => self.write_raw_u16(&info, samples),
+            EncodingType::Plain => self.write_plain_u16(&info, samples),
         }
     }
 
     /// Write a PPM image with `raw` encoding.
-    fn write_raw<T: SampleType>(&mut self, image: &Image) -> Result<(), NetpbmError> {
-        let mut buf = Self::build_header(image);
+    fn write_raw_u8(&mut self, info: &Info, samples: &[u8]) -> Result<(), NetpbmError> {
+        let mut buf = Self::build_header(info);
+        buf.extend(samples);
+        self.writer.write_all(&buf)?;
+        Ok(())
+    }
 
-        match image.samples {
-            SampleBuffer::EIGHT(samples) => {
-                buf.extend(samples);
-            }
-            SampleBuffer::SIXTEEN(samples) => {
-                // Truncate samples to one byte if the bit depth is less than 256.
-                if !image.info.bit_depth.is_multi_byte() {
-                    buf.extend(samples.iter().map(|s| (s & 0xFF) as u8));
-                } else {
-                    // netpbm specifies that multi-byte samples are big-endian.
-                    buf.extend(samples.iter().flat_map(|s| s.to_be_bytes()));
-                }
-            }
+    /// Write a PPM image with `plain` encoding.
+    fn write_plain_u8(&mut self, info: &Info, samples: &[u16]) -> Result<(), NetpbmError> {
+        let mut buf = Self::build_header(info).to_vec();
+        buf.extend(Self::build_triplets_u8(samples));
+        self.writer.write_all(&buf)?;
+        Ok(())
+    }
+
+    /// Write a PPM image with `raw` encoding.
+    fn write_raw_u16(&mut self, info: &Info, samples: &[u16]) -> Result<(), NetpbmError> {
+        let mut buf = Self::build_header(info);
+
+        // Truncate samples to one byte if the bit depth is less than 256.
+        if !info.bit_depth.is_multi_byte() {
+            buf.extend(samples.iter().map(|s| (s & 0xFF) as u8));
+        } else {
+            // netpbm specifies that multi-byte samples are big-endian.
+            buf.extend(samples.iter().flat_map(|s| s.to_be_bytes()));
         }
-
         self.writer.write_all(&buf)?;
 
         Ok(())
     }
 
     /// Write a PPM image with `plain` encoding.
-    fn write_plain<T: SampleType>(&mut self, image: &Image) -> Result<(), NetpbmError> {
-        let mut buf = Self::build_header(image).to_vec();
-
-        match image.samples {
-            SampleBuffer::EIGHT(samples) => buf.extend(Self::build_triplets::<u8>(samples)),
-            SampleBuffer::SIXTEEN(samples) => buf.extend(Self::build_triplets::<u16>(samples)),
-        }
-
+    fn write_plain_u16(&mut self, info: &Info, samples: &[u16]) -> Result<(), NetpbmError> {
+        let mut buf = Self::build_header(info).to_vec();
+        buf.extend(Self::build_triplets_u16(samples));
         self.writer.write_all(&buf)?;
-
         Ok(())
     }
 
     /// Build a PPM header.
-    fn build_header(image: &Image) -> Vec<u8> {
+    fn build_header(info: &Info) -> Vec<u8> {
         format!(
             "{}\n{} {} {}\n",
-            image.format().magic(),
-            image.width(),
-            image.height(),
-            image.bit_depth()
+            info.format.magic(),
+            info.width,
+            info.height,
+            info.bit_depth
         )
         .as_bytes()
         .to_vec()
     }
 
     /// Build the raster as lines of ASCII RGB triplets.
-    fn build_triplets<T: SampleType>(samples: &[T::Sample]) -> Vec<u8> {
+    fn build_triplets_u8(samples: &[u8]) -> Vec<u8> {
+        samples
+            .chunks_exact(3)
+            .flat_map(|triplet| {
+                format!("{} {} {}\n", triplet[0], triplet[1], triplet[2])
+                    .as_bytes()
+                    .to_owned()
+            })
+            .collect()
+    }
+
+    /// Build the raster as lines of ASCII RGB triplets.
+    fn build_triplets_u16(samples: &[u16]) -> Vec<u8> {
         samples
             .chunks_exact(3)
             .flat_map(|triplet| {
@@ -132,5 +172,72 @@ impl<R: io::Read> Decoder<R> {
     /// Create a new PPM decoder with the given reader.
     pub fn new(reader: R) -> Self {
         Decoder { reader }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[derive(Debug)]
+    struct ImageBuffer {
+        buffer: Vec<u8>,
+    }
+
+    impl ImageBuffer {
+        fn new() -> Self {
+            ImageBuffer { buffer: Vec::new() }
+        }
+
+        fn clear(&self) {
+            self.buffer.clear()
+        }
+    }
+
+    impl io::Write for ImageBuffer {
+        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            self.buffer.extend_from_slice(buf);
+            Ok(buf.len())
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn test_ppm() {
+        let mut buf = ImageBuffer::new();
+        let mut enc = Encoder::new(buf);
+
+        let data: Vec<u8> = vec![
+            255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 0, 255, 255, 255, 0, 0, 0,
+        ];
+        let expected = [
+            80, 54, 10, 51, 32, 50, 32, 50, 53, 53, 10, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255,
+            0, 255, 255, 255, 0, 0, 0,
+        ];
+
+        let res = enc.write(EncodingType::Raw, 3, 2, 255, &data);
+        assert!(res.is_ok());
+        assert_eq!(enc.writer.buffer[..], expected[..]);
+
+        buf.clear();
+
+        let data: Vec<u8> = vec![
+            255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 0, 255, 255, 255, 0, 0, 0,
+        ];
+        let expected =
+            format!("P3\n3 2 255\n255 0 0\n0 255 0\n0 0 255\n255 255 0\n255 255 255\n0 0 0")
+                .to_bytes();
+
+        let res = enc.write(EncodingType::Plain, 3, 2, 255, &data);
+        assert!(res.is_ok());
+        assert_eq!(enc.writer.buffer[..], expected[..]);
+    }
+
+    #[test]
+    fn test_ppm_wide() {
+        assert!(true)
     }
 }

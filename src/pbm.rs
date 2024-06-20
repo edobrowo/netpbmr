@@ -13,8 +13,8 @@
 //! The `plain` format uses the magic number `P1`.
 //!
 
-use crate::{formats::EncodingType, samples::*, Info};
-use crate::{Image, NetpbmError};
+use crate::NetpbmError;
+use crate::{formats::EncodingType, Info};
 use std::io;
 
 /// PBM encoder.

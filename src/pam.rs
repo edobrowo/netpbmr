@@ -24,8 +24,8 @@
 //! similar what is done with the `raw` format of
 //! PBM, PGM, and PPM. The PAM format uses the magic number `P7`.
 
-use crate::{formats::EncodingType, samples::*, Info};
-use crate::{Image, NetpbmError, TypeInfo};
+use crate::Info;
+use crate::{NetpbmError, TypeInfo};
 use std::io;
 
 /// PAM encoder.
@@ -42,36 +42,50 @@ impl<W: io::Write> Encoder<W> {
 
     /// Write one PAM image.
     ///
-    /// If the bit depth is less than 256, samples will be
-    /// truncated to the lower byte.
-    ///
-    pub fn write<T: SampleType>(
+    pub fn write(
         &mut self,
         width: u32,
         height: u32,
         bit_depth: u16,
         channels: u32,
-        type_info: &[TypeInfo],
-        samples: &[T::Sample],
+        type_info: &TypeInfo,
+        samples: &[u8],
     ) -> Result<(), NetpbmError> {
         let info = Info::new_pam(width, height, bit_depth, channels)?;
-        let image = Image::new::<T>(samples, info)?;
+        info.validate_u8_samples(samples);
 
-        let mut buf = Self::build_header(&image, type_info);
+        let mut buf = Self::build_header(&info, type_info);
+        buf.extend(samples);
 
-        match image.samples {
-            SampleBuffer::EIGHT(samples) => {
-                buf.extend(samples);
-            }
-            SampleBuffer::SIXTEEN(samples) => {
-                // Truncate samples to one byte if the bit depth is less than 256.
-                if !image.info.bit_depth.is_multi_byte() {
-                    buf.extend(samples.iter().map(|s| (s & 0xFF) as u8));
-                } else {
-                    // netpbm specifies that multi-byte samples are big-endian.
-                    buf.extend(samples.iter().flat_map(|s| s.to_be_bytes()));
-                }
-            }
+        self.writer.write_all(&buf)?;
+
+        Ok(())
+    }
+
+    /// Write one PAM image.
+    ///
+    /// If the bit depth is less than 256, samples will be
+    /// truncated to the lower byte.
+    pub fn write_wide(
+        &mut self,
+        width: u32,
+        height: u32,
+        bit_depth: u16,
+        channels: u32,
+        type_info: &TypeInfo,
+        samples: &[u16],
+    ) -> Result<(), NetpbmError> {
+        let info = Info::new_pam(width, height, bit_depth, channels)?;
+        info.validate_u8_samples(samples);
+
+        let mut buf = Self::build_header(&info, type_info);
+
+        // Truncate samples to one byte if the bit depth is less than 256.
+        if !info.bit_depth.is_multi_byte() {
+            buf.extend(samples.iter().map(|s| (s & 0xFF) as u8));
+        } else {
+            // netpbm specifies that multi-byte samples are big-endian.
+            buf.extend(samples.iter().flat_map(|s| s.to_be_bytes()));
         }
 
         self.writer.write_all(&buf)?;
@@ -80,25 +94,31 @@ impl<W: io::Write> Encoder<W> {
     }
 
     /// Build a PAM header.
-    fn build_header(image: &Image, _: &[TypeInfo]) -> Vec<u8> {
-        // TODO : typeinfo lol
-        format!(
+    fn build_header(info: &Info, type_info: &TypeInfo) -> Vec<u8> {
+        let mut header = format!(
             "
             {}\n
             WIDTH {}\n
             HEIGHT {}\n
             DEPTH {}\n
             MAXVAL {}\n
-            ENDHDR
             ",
-            image.format().magic(),
-            image.width(),
-            image.height(),
-            image.channels(),
-            image.bit_depth(),
-        )
-        .as_bytes()
-        .to_vec()
+            info.format.magic(),
+            info.width,
+            info.height,
+            info.channels,
+            info.bit_depth,
+        );
+
+        if let TypeInfo::Info(type_info) = type_info {
+            for info in type_info {
+                header += &format!("TUPLTYPE {}\n", info);
+            }
+        }
+
+        header += "ENDHDR\n";
+
+        header.into_bytes()
     }
 }
 

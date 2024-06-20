@@ -8,9 +8,6 @@ pub mod pam;
 pub mod pbm;
 pub mod pgm;
 pub mod ppm;
-pub mod samples;
-
-use samples::{SampleBuffer, SampleType};
 
 /// netpbm errors.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -104,59 +101,5 @@ impl From<io::Error> for NetpbmError {
         NetpbmError::IOOperationFailed {
             info: err.to_string(),
         }
-    }
-}
-
-/// Lightweight image wrapper that maintains a ref to a buffer
-/// of samples. On creation, the provided header values are
-/// bounds-checked and samples are validated against the
-/// bit-depth and image dimensions.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Image<'a> {
-    info: Info,
-    samples: SampleBuffer<'a>,
-}
-
-impl<'a> Image<'a> {
-    /// Create a new image.
-    pub fn new<T: SampleType>(samples: &'a [T::Sample], info: Info) -> Result<Self, NetpbmError> {
-        T::validate_samples(&info, samples)?;
-        let samples = T::to_sample_buffer(samples);
-        Ok(Self { samples, info })
-    }
-
-    // Get the netpbm format.
-    pub fn format(&self) -> NetpbmFormat {
-        self.info.format.clone()
-    }
-
-    // Get the encoding type.
-    pub fn encoding(&self) -> EncodingType {
-        self.info.encoding.clone()
-    }
-
-    // Get the width as a u32.
-    pub fn width(&self) -> u32 {
-        self.info.width.value()
-    }
-
-    // Get the height as a u32.
-    pub fn height(&self) -> u32 {
-        self.info.height.value()
-    }
-
-    // Get the bit depth as a u16.
-    pub fn bit_depth(&self) -> u16 {
-        self.info.bit_depth.value()
-    }
-
-    // Get the number of channels as a u32.
-    pub fn channels(&self) -> u32 {
-        self.info.channels.value()
-    }
-
-    // Get a ref to the image data.
-    pub fn samples(&self) -> &SampleBuffer {
-        &self.samples
     }
 }

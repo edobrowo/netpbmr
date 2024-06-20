@@ -13,8 +13,8 @@
 //! Grey values are written as ASCII-encoded decimal numbers.
 //! The `plain` format uses the magic number `P2`.
 
-use crate::{formats::EncodingType, samples::*, Info};
-use crate::{Image, NetpbmError};
+use crate::NetpbmError;
+use crate::{formats::EncodingType, Info};
 use std::io;
 
 /// PGM encoder.

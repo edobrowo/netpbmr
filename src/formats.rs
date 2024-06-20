@@ -97,18 +97,28 @@ pub enum MagicNumber {
     P7,
 }
 
+impl MagicNumber {
+    /// Returns the magic number's bytes.
+    pub fn to_bytes(&self) -> [u8; 2] {
+        match self {
+            Self::P1 => *b"P1",
+            Self::P2 => *b"P2",
+            Self::P3 => *b"P3",
+            Self::P4 => *b"P4",
+            Self::P5 => *b"P5",
+            Self::P6 => *b"P6",
+            Self::P7 => *b"P7",
+        }
+    }
+}
+
 impl fmt::Display for MagicNumber {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let magic = match self {
-            Self::P1 => "P1",
-            Self::P2 => "P2",
-            Self::P3 => "P3",
-            Self::P4 => "P4",
-            Self::P5 => "P5",
-            Self::P6 => "P6",
-            Self::P7 => "P7",
-        };
-        write!(f, "{}", magic)
+        write!(
+            f,
+            "{}",
+            String::from_utf8(self.to_bytes().to_vec()).expect("magic")
+        )
     }
 }
 
@@ -117,8 +127,7 @@ impl fmt::Display for MagicNumber {
 /// netpbm specifies that formats must specify the
 /// maximum sample value in an image.
 ///
-/// While PAM refers to this value as `maxval`, its type will
-/// be referred to as `BitDepth` in general.
+/// Note that netpbm generally refers to bitdepth as `maxval`.
 ///
 /// The bit depth must be between 1 and 65535 inclusive.
 ///
@@ -143,7 +152,7 @@ impl BitDepth {
         self.0
     }
 
-    /// Determine if the bit depth requires more multiple bytes to encode
+    /// Determine if the bit depth requires multiple bytes to encode
     pub fn is_multi_byte(&self) -> bool {
         self.value() > 255
     }
@@ -224,7 +233,7 @@ impl fmt::Display for ChannelDepth {
 ///
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum TypeInfo {
-    Info(String),
+    Info(Vec<String>),
     Empty,
 }
 
@@ -413,22 +422,56 @@ mod tests {
     #[test]
     fn test_pnm() {
         use NetpbmFormat::*;
-        assert!(!PBMRaw.is_pnm());
-        assert!(!PBMPlain.is_pnm());
-        assert!(!PGMRaw.is_pnm());
-        assert!(!PGMPlain.is_pnm());
-        assert!(!PPMRaw.is_pnm());
-        assert!(!PPMPlain.is_pnm());
-        assert!(PAM.is_pnm());
+        assert!(PBMRaw.is_pnm());
+        assert!(PBMPlain.is_pnm());
+        assert!(PGMRaw.is_pnm());
+        assert!(PGMPlain.is_pnm());
+        assert!(PPMRaw.is_pnm());
+        assert!(PPMPlain.is_pnm());
+        assert!(!PAM.is_pnm());
     }
 
     #[test]
     fn test_samples_valid() {
-        //
+        let samples = vec![1, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1];
+        let info = Info::new_pbm(EncodingType::Raw, 3, 4).expect("pbm");
+        assert!(info.validate_u8_samples(&samples).is_ok());
+        let info = Info::new_pgm(EncodingType::Plain, 3, 4, 255).expect("pgm");
+        assert!(info.validate_u8_samples(&samples).is_ok());
+        let info = Info::new_ppm(EncodingType::Raw, 4, 1, 10000).expect("ppm");
+        assert!(info.validate_u8_samples(&samples).is_ok());
+        let info = Info::new_pam(3, 4, 255, 1).expect("pam");
+        assert!(info.validate_u8_samples(&samples).is_ok());
+
+        let samples = vec![123, 23, 211, 0, 1232, 24, 100, 1, 1, 1, 100, 100];
+        let info = Info::new_pgm(EncodingType::Plain, 3, 4, 1232).expect("pgm");
+        assert!(info.validate_u16_samples(&samples).is_ok());
+        let info = Info::new_ppm(EncodingType::Raw, 1, 4, 10000).expect("ppm");
+        assert!(info.validate_u16_samples(&samples).is_ok());
+        let info = Info::new_pam(3, 2, 1500, 2).expect("pam");
+        assert!(info.validate_u16_samples(&samples).is_ok());
     }
 
     #[test]
     fn test_samples_invalid() {
-        //
+        let samples = vec![1, 0, 1, 0, 2, 0, 0, 1, 0, 1, 0, 1];
+        let info = Info::new_pbm(EncodingType::Raw, 3, 4).expect("pbm");
+        assert!(info.validate_u8_samples(&samples).is_err());
+        let info = Info::new_pgm(EncodingType::Plain, 3, 4, 1).expect("pgm");
+        assert!(info.validate_u8_samples(&samples).is_err());
+        let info = Info::new_ppm(EncodingType::Raw, 4, 2, 10000).expect("ppm");
+        assert!(info.validate_u8_samples(&samples).is_err());
+        let info = Info::new_pam(3, 4, 255, 2).expect("pam");
+        assert!(info.validate_u8_samples(&samples).is_err());
+
+        let samples = vec![123, 23, 211, 0, 1232, 24, 100, 1, 1, 1, 100, 100];
+        let info = Info::new_pbm(EncodingType::Plain, 3, 4).expect("pbm");
+        assert!(info.validate_u16_samples(&samples).is_err());
+        let info = Info::new_pgm(EncodingType::Raw, 11, 1, 1232).expect("pgm");
+        assert!(info.validate_u16_samples(&samples).is_err());
+        let info = Info::new_ppm(EncodingType::Plain, 3, 4, 10000).expect("ppm");
+        assert!(info.validate_u16_samples(&samples).is_err());
+        let info = Info::new_pam(1, 4, 1500, 4).expect("pam");
+        assert!(info.validate_u16_samples(&samples).is_err());
     }
 }

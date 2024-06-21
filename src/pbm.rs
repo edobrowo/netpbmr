@@ -53,12 +53,16 @@ impl<W: io::Write> Encoder<W> {
     }
 
     /// Write a PBM image with `raw` encoding.
-    fn write_raw(&mut self, info: &Info, _samples: &[u8]) -> Result<(), NetpbmError> {
-        let mut _buf = Self::build_header(info);
+    fn write_raw(&mut self, info: &Info, samples: &[u8]) -> Result<(), NetpbmError> {
+        let mut buf = Self::build_header(info);
 
-        // TODO : packing
+        // Pack bytes. Add right-side padding if there are remainder bits.
+        let packed_bytes = samples
+            .chunks(8)
+            .map(|x| x.iter().enumerate().fold(0, |a, (i, b)| a | (b << (7 - i))));
+        buf.extend(packed_bytes);
 
-        // self.writer.write_all(&buf)?;
+        self.writer.write_all(&buf)?;
 
         Ok(())
     }
@@ -109,3 +113,59 @@ impl<W: io::Write> Encoder<W> {
 //         Decoder { reader }
 //     }
 // }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[derive(Debug)]
+    struct ImageBuffer {
+        buffer: Vec<u8>,
+    }
+
+    impl ImageBuffer {
+        fn new() -> Self {
+            ImageBuffer { buffer: Vec::new() }
+        }
+    }
+
+    impl io::Write for ImageBuffer {
+        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            self.buffer.extend_from_slice(buf);
+            Ok(buf.len())
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn test_write_pbm_raw() {
+        let mut enc = Encoder::new(ImageBuffer::new());
+
+        let data: Vec<u8> = vec![1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0];
+        let expected = [80, 52, 10, 52, 32, 51, 10, 170, 160];
+
+        let res = enc.write(EncodingType::Raw, 4, 3, &data);
+        assert!(res.is_ok());
+        assert_eq!(enc.writer.buffer[..], expected[..]);
+    }
+
+    #[test]
+    fn test_write_pbm_plain() {
+        let mut enc = Encoder::new(ImageBuffer::new());
+
+        let data: Vec<u8> = vec![
+            1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1,
+            0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0,
+        ];
+        let expected = format!(
+            "P1\n7 6\n1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1\n0 1 0 1 0 1 0\n"
+        );
+
+        let res = enc.write(EncodingType::Plain, 7, 6, &data);
+        assert!(res.is_ok());
+        assert_eq!(enc.writer.buffer[..], *expected.as_bytes());
+    }
+}

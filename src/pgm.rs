@@ -92,7 +92,7 @@ impl<W: io::Write> Encoder<W> {
         Ok(())
     }
 
-    /// Write a PPM image with `plain` encoding.
+    /// Write a PGM image with `plain` encoding.
     fn write_plain_u8(&mut self, info: &Info, samples: &[u8]) -> Result<(), NetpbmError> {
         let mut buf = Self::build_header(info).to_vec();
         buf.extend(Self::build_lines_u8(samples));
@@ -119,7 +119,7 @@ impl<W: io::Write> Encoder<W> {
         Ok(())
     }
 
-    /// Write a PPM image with `plain` encoding.
+    /// Write a PGM image with `plain` encoding.
     fn write_plain_u16(&mut self, info: &Info, samples: &[u16]) -> Result<(), NetpbmError> {
         let mut buf = Self::build_header(info).to_vec();
         buf.extend(Self::build_lines_u16(samples));
@@ -159,18 +159,18 @@ impl<W: io::Write> Encoder<W> {
     }
 }
 
-/// PGM decoder.
-#[derive(Debug)]
-pub struct Decoder<R: io::Read> {
-    reader: R,
-}
+// /// PGM decoder.
+// #[derive(Debug)]
+// pub struct Decoder<R: io::Read> {
+//     reader: R,
+// }
 
-impl<R: io::Read> Decoder<R> {
-    /// Create a new PGM decoder with the given reader.
-    pub fn new(reader: R) -> Self {
-        Decoder { reader }
-    }
-}
+// impl<R: io::Read> Decoder<R> {
+//     /// Create a new PGM decoder with the given reader.
+//     pub fn new(reader: R) -> Self {
+//         Decoder { reader }
+//     }
+// }
 
 #[cfg(test)]
 mod tests {
@@ -199,7 +199,7 @@ mod tests {
     }
 
     #[test]
-    fn test_write_ppm_raw() {
+    fn test_write_pgm_raw() {
         let mut enc = Encoder::new(ImageBuffer::new());
 
         let data: Vec<u8> = vec![
@@ -216,7 +216,7 @@ mod tests {
     }
 
     #[test]
-    fn test_write_ppm_plain() {
+    fn test_write_pgm_plain() {
         let mut enc = Encoder::new(ImageBuffer::new());
 
         let data: Vec<u8> = vec![
@@ -232,7 +232,7 @@ mod tests {
     }
 
     #[test]
-    fn test_write_ppm_wide_raw() {
+    fn test_write_pgm_wide_raw() {
         let mut enc = Encoder::new(ImageBuffer::new());
 
         let data: Vec<u16> = vec![
@@ -246,11 +246,10 @@ mod tests {
         let res = enc.write_wide(EncodingType::Raw, 4, 4, 2048, &data);
         assert!(res.is_ok());
         assert_eq!(enc.writer.buffer[..], expected[..]);
-        assert!(true)
     }
 
     #[test]
-    fn test_write_ppm_wide_plain() {
+    fn test_write_pgm_wide_plain() {
         let mut enc = Encoder::new(ImageBuffer::new());
 
         let data: Vec<u16> = vec![

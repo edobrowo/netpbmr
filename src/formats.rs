@@ -331,7 +331,9 @@ impl Info {
     /// Validate that u8 sample values agree with header info.
     pub fn validate_u8_samples(&self, samples: &[u8]) -> Result<(), NetpbmError> {
         // Check that the sample size is correct.
+        dbg!("help pls");
         self.validate_sample_size(samples.len())?;
+        dbg!("help");
 
         // Check samples against bit depth bound.
         for (offset, &sample) in samples.iter().enumerate() {

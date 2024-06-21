@@ -162,18 +162,18 @@ impl<W: io::Write> Encoder<W> {
     }
 }
 
-/// PPM decoder.
-#[derive(Debug)]
-pub struct Decoder<R: io::Read> {
-    reader: R,
-}
+// /// PPM decoder.
+// #[derive(Debug)]
+// pub struct Decoder<R: io::Read> {
+//     reader: R,
+// }
 
-impl<R: io::Read> Decoder<R> {
-    /// Create a new PPM decoder with the given reader.
-    pub fn new(reader: R) -> Self {
-        Decoder { reader }
-    }
-}
+// impl<R: io::Read> Decoder<R> {
+//     /// Create a new PPM decoder with the given reader.
+//     pub fn new(reader: R) -> Self {
+//         Decoder { reader }
+//     }
+// }
 
 #[cfg(test)]
 mod tests {
@@ -248,7 +248,6 @@ mod tests {
         let res = enc.write_wide(EncodingType::Raw, 3, 2, 2048, &data);
         assert!(res.is_ok());
         assert_eq!(enc.writer.buffer[..], expected[..]);
-        assert!(true)
     }
 
     #[test]

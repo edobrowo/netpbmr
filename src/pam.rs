@@ -96,13 +96,7 @@ impl<W: io::Write> Encoder<W> {
     /// Build a PAM header.
     fn build_header(info: &Info, type_info: &TypeInfo) -> Vec<u8> {
         let mut header = format!(
-            "
-            {}\n
-            WIDTH {}\n
-            HEIGHT {}\n
-            DEPTH {}\n
-            MAXVAL {}\n
-            ",
+            "{}\nWIDTH {}\nHEIGHT {}\nDEPTH {}\nMAXVAL {}\n",
             info.format.magic(),
             info.width,
             info.height,
@@ -122,15 +116,87 @@ impl<W: io::Write> Encoder<W> {
     }
 }
 
-/// PAM decoder.
-#[derive(Debug)]
-pub struct Decoder<R: io::Read> {
-    reader: R,
-}
+// /// PAM decoder.
+// #[derive(Debug)]
+// pub struct Decoder<R: io::Read> {
+//     reader: R,
+// }
 
-impl<R: io::Read> Decoder<R> {
-    /// Create a new PAM decoder with the given reader.
-    pub fn new(reader: R) -> Self {
-        Decoder { reader }
+// impl<R: io::Read> Decoder<R> {
+//     /// Create a new PAM decoder with the given reader.
+//     pub fn new(reader: R) -> Self {
+//         Decoder { reader }
+//     }
+// }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[derive(Debug)]
+    struct ImageBuffer {
+        buffer: Vec<u8>,
+    }
+
+    impl ImageBuffer {
+        fn new() -> Self {
+            ImageBuffer { buffer: Vec::new() }
+        }
+    }
+
+    impl io::Write for ImageBuffer {
+        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            self.buffer.extend_from_slice(buf);
+            Ok(buf.len())
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn test_write_pam_raw() {
+        let mut enc = Encoder::new(ImageBuffer::new());
+
+        let data: Vec<u8> = vec![
+            127, 255, 0, 0, 127, 0, 255, 0, 127, 0, 0, 255, 127, 255, 255, 0, 127, 255, 255, 255,
+            127, 0, 0, 0,
+        ];
+        let mut expected = "P7\nWIDTH 3\nHEIGHT 2\nDEPTH 4\nMAXVAL 255\nENDHDR\n"
+            .to_string()
+            .as_bytes()
+            .to_vec();
+        expected.extend([
+            127, 255, 0, 0, 127, 0, 255, 0, 127, 0, 0, 255, 127, 255, 255, 0, 127, 255, 255, 255,
+            127, 0, 0, 0,
+        ]);
+
+        let res = enc.write(3, 2, 255, 4, &TypeInfo::Empty, &data);
+        assert!(res.is_ok());
+        assert_eq!(enc.writer.buffer[..], expected[..]);
+    }
+
+    #[test]
+    fn test_write_pam_wide() {
+        let mut enc = Encoder::new(ImageBuffer::new());
+
+        let data: Vec<u16> = vec![
+            1056, 0, 0, 10, 0, 1056, 0, 10, 0, 0, 1056, 10, 1056, 1056, 0, 10, 1056, 1056, 1056,
+            10, 0, 0, 0, 10,
+        ];
+        let mut expected = "P7\nWIDTH 3\nHEIGHT 2\nDEPTH 4\nMAXVAL 2048\nTUPLTYPE RGBA64\nENDHDR\n"
+            .to_string()
+            .as_bytes()
+            .to_vec();
+        expected.extend([
+            4, 32, 0, 0, 0, 0, 0, 10, 0, 0, 4, 32, 0, 0, 0, 10, 0, 0, 0, 0, 4, 32, 0, 10, 4, 32, 4,
+            32, 0, 0, 0, 10, 4, 32, 4, 32, 4, 32, 0, 10, 0, 0, 0, 0, 0, 0, 0, 10,
+        ]);
+
+        let type_info = TypeInfo::Info(vec!["RGBA64".to_string()]);
+        let res = enc.write_wide(3, 2, 2048, 4, &type_info, &data);
+        assert!(res.is_ok());
+        assert_eq!(enc.writer.buffer[..], expected[..]);
     }
 }

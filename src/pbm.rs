@@ -53,12 +53,12 @@ impl<W: io::Write> Encoder<W> {
     }
 
     /// Write a PBM image with `raw` encoding.
-    fn write_raw(&mut self, info: &Info, samples: &[u8]) -> Result<(), NetpbmError> {
-        let mut buf = Self::build_header(info);
+    fn write_raw(&mut self, info: &Info, _samples: &[u8]) -> Result<(), NetpbmError> {
+        let mut _buf = Self::build_header(info);
 
         // TODO : packing
 
-        self.writer.write_all(&buf)?;
+        // self.writer.write_all(&buf)?;
 
         Ok(())
     }
@@ -97,15 +97,15 @@ impl<W: io::Write> Encoder<W> {
     }
 }
 
-/// PBM decoder.
-#[derive(Debug)]
-pub struct Decoder<R: io::Read> {
-    reader: R,
-}
+// /// PBM decoder.
+// #[derive(Debug)]
+// pub struct Decoder<R: io::Read> {
+//     reader: R,
+// }
 
-impl<R: io::Read> Decoder<R> {
-    /// Create a new PBM decoder with the given reader.
-    pub fn new(reader: R) -> Self {
-        Decoder { reader }
-    }
-}
+// impl<R: io::Read> Decoder<R> {
+//     /// Create a new PBM decoder with the given reader.
+//     pub fn new(reader: R) -> Self {
+//         Decoder { reader }
+//     }
+// }

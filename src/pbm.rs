@@ -14,7 +14,7 @@
 //!
 
 use crate::NetpbmError;
-use crate::{formats::EncodingType, Info};
+use crate::{EncodingType, Info};
 use std::io;
 
 /// PBM encoder.

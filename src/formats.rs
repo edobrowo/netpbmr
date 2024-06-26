@@ -1,4 +1,4 @@
-use crate::NetpbmError;
+use crate::{NetpbmError, EncodingType};
 use std::fmt;
 
 /// netpbm supports 4 types of images: PBM, PGM, PPM, and PAM.
@@ -48,29 +48,6 @@ impl NetpbmFormat {
             PAM => P7,
         }
     }
-}
-
-/// Encoding type refers to whether the netpbm image is
-/// `raw` or `plain`.
-///
-/// Although never specified, PAM is considered `raw`.
-///
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub enum EncodingType {
-    /// Sample data is serialized as bytes.
-    ///
-    /// The header is still encoded in ASCII.
-    ///
-    Raw,
-
-    /// Sample data is written as ASCII integers separated
-    /// by whitespace.
-    ///
-    /// Additionally, each line cannot be longer than 70 characters.
-    ///
-    /// The header is still encoded in ASCII.
-    ///
-    Plain,
 }
 
 /// Magic number field.
@@ -331,9 +308,7 @@ impl Info {
     /// Validate that u8 sample values agree with header info.
     pub fn validate_u8_samples(&self, samples: &[u8]) -> Result<(), NetpbmError> {
         // Check that the sample size is correct.
-        dbg!("help pls");
         self.validate_sample_size(samples.len())?;
-        dbg!("help");
 
         // Check samples against bit depth bound.
         for (offset, &sample) in samples.iter().enumerate() {

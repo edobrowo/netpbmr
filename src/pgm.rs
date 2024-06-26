@@ -14,7 +14,7 @@
 //! The `plain` format uses the magic number `P2`.
 
 use crate::NetpbmError;
-use crate::{formats::EncodingType, Info};
+use crate::{EncodingType, Info};
 use std::io;
 
 /// PGM encoder.

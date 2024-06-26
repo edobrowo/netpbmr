@@ -9,6 +9,29 @@ pub mod pbm;
 pub mod pgm;
 pub mod ppm;
 
+/// Encoding type refers to whether the netpbm image is
+/// `raw` or `plain`.
+///
+/// Although never specified, PAM is considered `raw`.
+///
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum EncodingType {
+    /// Sample data is serialized as bytes.
+    ///
+    /// The header is still encoded in ASCII.
+    ///
+    Raw,
+
+    /// Sample data is written as ASCII integers separated
+    /// by whitespace.
+    ///
+    /// Additionally, each line cannot be longer than 70 characters.
+    ///
+    /// The header is still encoded in ASCII.
+    ///
+    Plain,
+}
+
 /// netpbm errors.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum NetpbmError {

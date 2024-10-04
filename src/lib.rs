@@ -1,4 +1,5 @@
 use formats::*;
+use std::array::TryFromSliceError;
 use std::error::Error;
 use std::fmt;
 use std::io;
@@ -121,6 +122,14 @@ impl fmt::Display for NetpbmError {
 
 impl From<io::Error> for NetpbmError {
     fn from(err: io::Error) -> NetpbmError {
+        NetpbmError::IOOperationFailed {
+            info: err.to_string(),
+        }
+    }
+}
+
+impl From<TryFromSliceError> for NetpbmError {
+    fn from(err: TryFromSliceError) -> NetpbmError {
         NetpbmError::IOOperationFailed {
             info: err.to_string(),
         }

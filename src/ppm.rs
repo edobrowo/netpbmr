@@ -45,10 +45,10 @@ impl<W: io::Write> Encoder<W> {
         encoding: EncodingType,
         width: u32,
         height: u32,
-        bit_depth: u16,
+        bit_depth: u8,
         samples: &[u8],
     ) -> Result<(), NetpbmError> {
-        let info = Info::new_ppm(encoding, width, height, bit_depth)?;
+        let info = Info::new_ppm(encoding, width, height, bit_depth as u16)?;
         info.validate_u8_samples(samples)?;
         match encoding {
             EncodingType::Raw => self.write_raw_u8(&info, samples),

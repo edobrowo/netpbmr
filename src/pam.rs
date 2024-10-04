@@ -41,17 +41,16 @@ impl<W: io::Write> Encoder<W> {
     }
 
     /// Write one PAM image.
-    ///
     pub fn write(
         &mut self,
         width: u32,
         height: u32,
-        bit_depth: u16,
+        bit_depth: u8,
         channels: u32,
         type_info: &TypeInfo,
         samples: &[u8],
     ) -> Result<(), NetpbmError> {
-        let info = Info::new_pam(width, height, bit_depth, channels)?;
+        let info = Info::new_pam(width, height, bit_depth as u16, channels)?;
         info.validate_u8_samples(samples)?;
 
         let mut buf = Self::build_header(&info, type_info);

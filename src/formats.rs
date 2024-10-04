@@ -1,4 +1,4 @@
-use crate::{NetpbmError, EncodingType};
+use crate::{EncodingType, NetpbmError};
 use std::fmt;
 
 /// netpbm supports 4 types of images: PBM, PGM, PPM, and PAM.
@@ -85,6 +85,20 @@ impl MagicNumber {
             Self::P5 => *b"P5",
             Self::P6 => *b"P6",
             Self::P7 => *b"P7",
+        }
+    }
+
+    /// Creates a magic number from the given bytes.
+    pub fn from_bytes(buf: &[u8; 2]) -> Option<Self> {
+        match buf {
+            b"P1" => Some(Self::P1),
+            b"P2" => Some(Self::P2),
+            b"P3" => Some(Self::P3),
+            b"P4" => Some(Self::P4),
+            b"P5" => Some(Self::P5),
+            b"P6" => Some(Self::P6),
+            b"P7" => Some(Self::P7),
+            _ => None,
         }
     }
 }
@@ -198,6 +212,21 @@ impl ChannelDepth {
 impl fmt::Display for ChannelDepth {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.0)
+    }
+}
+
+pub mod decode {
+    const SPACE: u8 = b' ';
+    const TAB: u8 = b'\t';
+    const LF: u8 = b'\n';
+    const VT: u8 = 11;
+    const FF: u8 = 12;
+    const CR: u8 = b'\r';
+
+    /// Determine whether a character is considered whitespace.
+    /// A white space character in netpbm is space, CR, LF, TAB, VT, or FF.
+    pub fn is_whitespace(byte: u8) -> bool {
+        matches!(byte, SPACE | TAB | LF | VT | FF | CR)
     }
 }
 
@@ -341,7 +370,7 @@ impl Info {
         Ok(())
     }
 
-    // Validate that the number of samples corresponds to the image dimensions.
+    /// Validate that the number of samples corresponds to the image dimensions.
     fn validate_sample_size(&self, samples_len: usize) -> Result<(), NetpbmError> {
         let expected_samples = self.width.value() * self.height.value() * self.channels.value();
         if expected_samples != samples_len as u32 {

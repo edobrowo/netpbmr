@@ -13,9 +13,10 @@
 //! The `plain` format uses the magic number `P1`.
 //!
 
-use crate::NetpbmError;
-use crate::{EncodingType, Info};
 use std::io;
+
+use crate::formats::decode;
+use crate::{EncodingType, Info, MagicNumber, NetpbmError, NetpbmFormat};
 
 /// PBM encoder.
 #[derive(Debug)]
@@ -101,18 +102,77 @@ impl<W: io::Write> Encoder<W> {
     }
 }
 
-// /// PBM decoder.
-// #[derive(Debug)]
-// pub struct Decoder<R: io::Read> {
-//     reader: R,
-// }
+/// PBM decoder.
+#[derive(Debug)]
+pub struct Decoder<R: io::Read> {
+    reader: R,
+}
 
-// impl<R: io::Read> Decoder<R> {
-//     /// Create a new PBM decoder with the given reader.
-//     pub fn new(reader: R) -> Self {
-//         Decoder { reader }
-//     }
-// }
+impl<R: io::Read> Decoder<R> {
+    /// Create a new PBM decoder with the given reader.
+    pub fn new(reader: R) -> Self {
+        Decoder { reader }
+    }
+
+    /// Read from the provided buffer and fill the `Info` metadata struct.
+    pub fn read(&mut self, buf: &mut [u8]) -> Result<Info, NetpbmError> {
+        let mut img_buf = Vec::new();
+        self.reader.read_to_end(&mut img_buf)?;
+
+        let magic_number: [u8; 2] = img_buf[0..2].try_into()?;
+        let format = match MagicNumber::from_bytes(&magic_number) {
+            Some(magic_number) if magic_number == NetpbmFormat::PBMRaw.magic() => {
+                NetpbmFormat::PBMRaw
+            }
+            Some(magic_number) if magic_number == NetpbmFormat::PBMPlain.magic() => {
+                NetpbmFormat::PBMPlain
+            }
+            Some(magic_number) => {
+                return Err(NetpbmError::IOOperationFailed {
+                    info: format!("Invalid magic number: {}", magic_number),
+                })
+            }
+            None => {
+                return Err(NetpbmError::IOOperationFailed {
+                    info: format!(
+                        "Unexpected bytes at magic number position: {:?}",
+                        magic_number
+                    ),
+                })
+            }
+        };
+
+        match format {
+            NetpbmFormat::PBMRaw => self.read_raw(&img_buf, buf),
+            NetpbmFormat::PBMPlain => self.read_plain(&img_buf, buf),
+            _ => unreachable!(),
+        }
+    }
+
+    /// Read a PBM `raw` image to the provided buffer and fill the `Info` metadata struct.
+    ///
+    /// Assumes magic number bytes can be skipped.
+    ///
+    fn read_raw(&mut self, img_buf: &[u8], buf: &mut [u8]) -> Result<Info, NetpbmError> {
+        Info::new_pbm(EncodingType::Raw, 1, 1)
+    }
+
+    /// Read a PBM `plain` image to the provided buffer and fill the `Info` metadata struct.
+    ///
+    /// Assumes magic number bytes can be skipped.
+    ///
+    fn read_plain(&mut self, img_buf: &[u8], buf: &mut [u8]) -> Result<Info, NetpbmError> {
+        Info::new_pbm(EncodingType::Plain, 1, 1)
+    }
+
+    /// Reads the next field.
+    ///
+    /// Assumes the last read byte
+    ///
+    fn read_field(&mut self, buf: &mut [u8]) -> Result<(), NetpbmError> {
+        Ok(())
+    }
+}
 
 #[cfg(test)]
 mod tests {
